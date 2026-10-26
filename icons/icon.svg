@@ -1,61 +1,31 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <defs>
-    <pattern id="g" width="64" height="64" patternUnits="userSpaceOnUse">
-      <path d="M64 0H0V64" fill="none" stroke="#fff" stroke-opacity=".10" stroke-width="3"/>
-    </pattern>
-    <pattern id="G" width="256" height="256" patternUnits="userSpaceOnUse">
-      <path d="M256 0H0V256" fill="none" stroke="#fff" stroke-opacity=".16" stroke-width="5"/>
-    </pattern>
-    <radialGradient id="v" cx="50%" cy="45%" r="70%">
-      <stop offset="55%" stop-color="#0A1450" stop-opacity="0"/>
-      <stop offset="100%" stop-color="#0A1450" stop-opacity=".55"/>
-    </radialGradient>
+    <pattern id="g" width="64" height="64" patternUnits="userSpaceOnUse"><path d="M64 0H0V64" fill="none" stroke="#fff" stroke-opacity=".09" stroke-width="3"/></pattern>
+    <pattern id="G" width="256" height="256" patternUnits="userSpaceOnUse"><path d="M256 0H0V256" fill="none" stroke="#fff" stroke-opacity=".15" stroke-width="5"/></pattern>
+    <radialGradient id="v" cx="50%" cy="45%" r="70%"><stop offset="55%" stop-color="#0A1450" stop-opacity="0"/><stop offset="100%" stop-color="#0A1450" stop-opacity=".55"/></radialGradient>
+    <linearGradient id="cel" x1="0" x2="1" y1="0" y2=".3"><stop offset=".6" stop-color="#121633" stop-opacity="0"/><stop offset=".6" stop-color="#121633" stop-opacity=".2"/></linearGradient>
+    <clipPath id="hc"><path d="M86 44 L114 44 L119 56 L112 70 L88 70 L81 56 Z"/></clipPath>
   </defs>
   <rect width="1024" height="1024" fill="#2546C8"/>
   <rect width="1024" height="1024" fill="url(#g)"/>
   <rect width="1024" height="1024" fill="url(#G)"/>
   <rect width="1024" height="1024" fill="url(#v)"/>
-
-  <!-- drop shadow -->
-  <g transform="translate(0 34)" fill="#0B1A5C" stroke="#0B1A5C" opacity=".55" stroke-width="64" stroke-linejoin="round">
-    <circle cx="512" cy="160" r="34"/><rect x="501" y="160" width="22" height="110"/>
-    <rect x="166" y="420" width="120" height="250" rx="44"/>
-    <rect x="738" y="420" width="120" height="250" rx="44"/>
-    <path d="M250 360 Q512 196 774 360 L744 776 Q512 868 280 776 Z"/>
-  </g>
-
-  <!-- white die-cut -->
-  <g fill="#fff" stroke="#fff" stroke-width="64" stroke-linejoin="round">
-    <circle cx="512" cy="160" r="34"/><rect x="501" y="160" width="22" height="110"/>
-    <rect x="166" y="420" width="120" height="250" rx="44"/>
-    <rect x="738" y="420" width="120" height="250" rx="44"/>
-    <path d="M250 360 Q512 196 774 360 L744 776 Q512 868 280 776 Z"/>
-  </g>
-
-  <!-- the mech head -->
-  <g stroke="#121633" stroke-width="22" stroke-linejoin="round" stroke-linecap="round">
-    <!-- antenna -->
-    <path d="M512 252 L512 170" fill="none"/>
-    <circle cx="512" cy="160" r="34" fill="#FF4F64"/>
-    <!-- ear pods -->
-    <rect x="166" y="420" width="120" height="250" rx="44" fill="#C4581F"/>
-    <rect x="738" y="420" width="120" height="250" rx="44" fill="#C4581F"/>
-    <!-- helmet -->
-    <path d="M250 360 Q512 196 774 360 L744 776 Q512 868 280 776 Z" fill="#FF8A3D"/>
-    <!-- jaw shade -->
-    <path d="M296 640 L728 640 L716 772 Q512 852 308 772 Z" fill="#C4581F"/>
-    <!-- visor -->
-    <rect x="318" y="430" width="388" height="132" rx="66" fill="#121633"/>
-    <rect x="364" y="468" width="120" height="56" rx="28" fill="#FFC929" stroke-width="0"/>
-    <rect x="540" y="468" width="120" height="56" rx="28" fill="#FFC929" stroke-width="0"/>
-    <rect x="380" y="478" width="34" height="18" rx="9" fill="#fff" stroke-width="0"/>
-    <rect x="556" y="478" width="34" height="18" rx="9" fill="#fff" stroke-width="0"/>
-    <!-- grille -->
-    <path d="M430 690 L430 760 M482 696 L482 774 M542 696 L542 774 M594 690 L594 760" fill="none" stroke-width="20"/>
-    <!-- brow plate -->
-    <path d="M360 372 Q512 300 664 372" fill="none" stroke-width="20"/>
-    <!-- bolts -->
-    <circle cx="226" cy="545" r="20" fill="#FFC929" stroke-width="12"/>
-    <circle cx="798" cy="545" r="20" fill="#FFC929" stroke-width="12"/>
+  <g transform="translate(-1288 -410) scale(18)" stroke-linejoin="round">
+    <!-- shadow + die-cut for the fin sticker and the helmet sticker -->
+    <g transform="translate(0 1.8)" fill="#08123F" stroke="#08123F" stroke-width="3.6" opacity=".4">
+      <path d="M100 50 L82 32 L89 31 L100 42 L111 31 L118 32 Z"/><path d="M86 44 L114 44 L119 56 L112 70 L88 70 L81 56 Z"/><path d="M93 66 L107 66 L104 73 L96 73 Z"/>
+    </g>
+    <g fill="#fff" stroke="#fff" stroke-width="3.6">
+      <path d="M100 50 L82 32 L89 31 L100 42 L111 31 L118 32 Z"/><path d="M86 44 L114 44 L119 56 L112 70 L88 70 L81 56 Z"/><path d="M93 66 L107 66 L104 73 L96 73 Z"/>
+    </g>
+    <g stroke="#121633" stroke-width="1.15">
+      <path d="M100 50 L82 32 L89 31 L100 42 L111 31 L118 32 Z" fill="#FFD23F"/>
+      <path d="M86 44 L114 44 L119 56 L112 70 L88 70 L81 56 Z" fill="#FF8A3D"/>
+      <rect x="0" y="0" width="200" height="200" fill="url(#cel)" clip-path="url(#hc)" stroke="none"/>
+      <path d="M88 47 L104 47 L101 52 L86 53 Z" fill="#fff" fill-opacity=".45" stroke="none"/>
+      <path d="M88 56 L112 56 L109 62 L91 62 Z" fill="#FFE45C"/>
+      <path d="M91 58.2 L97 58.2" stroke="#fff" stroke-width="1.1" stroke-linecap="round"/>
+      <path d="M93 66 L107 66 L104 73 L96 73 Z" fill="#B3602A"/>
+    </g>
   </g>
 </svg>

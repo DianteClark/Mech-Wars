@@ -12,4 +12,5 @@ Sticker-style mech TCG in plain HTML/JS (ES modules, no build step), hosted on G
 - Settings live in the save (`store.js` → `settings`); Settings → Reset all data wipes everything. Add new save fields to `DEFAULT` there.
 - Battle readability rules: every number on screen gets a label, the Core tag on each mech shows shield status, and coaching tips render in the midline (never over controls).
 - Screenshot-check UI at 375×667 (SE) and 430×932 (Pro Max) before pushing.
+- Mech art (`src/ui/art.js`): each part is its own sticker via `sticker()`; upgrades come from `mountShapes()` and are positioned at `BODIES[frame].mounts`. Right arms are auto-mirrored from left arms. New Frames need a body plan with pivot and mount points.
 - Copy style: sentence case, plain verbs, no all-caps labels.

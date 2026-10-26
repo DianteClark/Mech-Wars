@@ -13,7 +13,7 @@ import { mechSVG, iconSVG, cardIcon, logoSVG, chipPos, limbGlyph, TYPE_COLORS, T
 import { load, save, update, resetAll } from './store.js';
 import { newRun, startBattle, twistFor, enemyFor, aiLevel, reward, isBoss } from './tower.js';
 
-const VERSION = '0.2';
+const VERSION = '0.3';
 const app = document.getElementById('app');
 const fx = document.getElementById('fx');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms * speed()));
@@ -298,7 +298,11 @@ function mechBox(p, side) {
         <div class="foe-col"><span class="ov-label">Hand</span><span class="hud-stat" aria-label="${p.hand.length} cards in hand"><span class="hand-backs">${'<i></i>'.repeat(Math.min(p.hand.length, 4))}</span><b>${p.hand.length}</b></span>
         ${p.guard ? `<span class="ov-label">Drones</span><span class="hud-stat"><b>${p.guard}</b></span>` : ''}</div></div>`
     : '';
-  return `<div class="mech-zone ${side}-zone">${overlay}<div class="mech-box" id="box-${side}">${mechSVG(p.frame, p)}${chips}</div></div>`;
+  const idx = side === 'you' ? 0 : 1;
+  const opts = {};
+  if (ui.fxSlap && ui.fxSlap.p === idx) { opts.slap = ui.fxSlap.limb; opts.slapKind = ui.fxSlap.kind; }
+  if (ui.fxPeel && ui.fxPeel.p === idx) opts.peel = ui.fxPeel.limb;
+  return `<div class="mech-zone ${side}-zone">${overlay}<div class="mech-box" id="box-${side}">${mechSVG(p.frame, p, opts)}${chips}</div></div>`;
 }
 
 function canAct(limb) {
@@ -450,7 +454,14 @@ function step(a) {
   const t = events.filter((e) => e.type !== 'turn' && e.type !== 'draw' && e.type !== 'end').map(describe).filter(Boolean);
   if (t.length) { ui.ticker = t[t.length - 1]; ui.tickerSide = events[events.length - 1].p === 0 ? 'you' : ''; }
   else if (events.some((e) => e.type === 'turn')) ui.ticker = G.active === 0 ? 'Your turn' : 'Enemy turn';
+  // Sticker effects: new upgrades slap on, destroyed parts peel off (played on this render only).
+  ui.fxSlap = null; ui.fxPeel = null;
+  for (const e of events) {
+    if (e.type === 'built' && e.target) ui.fxSlap = { p: e.p, limb: e.target, kind: CARDS[e.id].type === 'plating' ? 'plating' : 'mount' };
+    if (e.type === 'attack' && e.destroyed) ui.fxPeel = { p: 1 - e.p, limb: e.target };
+  }
   render();
+  ui.fxSlap = null; ui.fxPeel = null;
   animate(events);
   if (G.winner !== null) setTimeout(finishBattle, 1500 * speed());
 }
@@ -545,8 +556,7 @@ function animate(events) {
     } else if (e.type === 'built') {
       const box = document.getElementById(e.p === 0 ? 'box-you' : 'box-enemy');
       const part = e.target ? box.querySelector(`.limb[data-limb="${e.target}"]`) : null;
-      retrigger(part, 'pop-in');
-      floatAt(part || box, `${CARDS[e.id].name} online`, 'info');
+      floatAt(part || box, `${CARDS[e.id].name} on`, 'info');
     } else if (e.type === 'overdrive') {
       if (!calm()) retrigger(app, 'screen-shake');
       floatAt(document.querySelector(e.p === 0 ? '#box-you .core-gem' : '#box-enemy .core-gem'), 'Overdrive!', 'info');

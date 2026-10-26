@@ -1,278 +1,387 @@
 // Sticker-style vector art, drawn in code. Everything is SVG: crisp at any size, no pixels.
-// Each mech is drawn twice: a fat white "die-cut" pass behind, then the colored pass with ink outlines.
+//
+// Mechs are modular: every part (head, torso, each arm, legs) is its own die-cut sticker
+// with its own white border and drop shadow. Upgrades are smaller stickers slapped on top
+// of a part. Hurt parts hang loose and get scuffed; destroyed parts peel off and leave a ghost.
 
 import { CARDS, FRAMES } from '../engine/data.js';
 
 export const INK = '#121633';
+const LINE_W = 2.4;      // ink outline
+const CUT_W = 8;         // white die-cut border (stroke width; half shows outside)
 
 function shade(hex, amt) {
   const n = parseInt(hex.slice(1), 16);
-  let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
   const f = (c) => Math.max(0, Math.min(255, Math.round(amt < 0 ? c * (1 + amt) : c + (255 - c) * amt)));
   return '#' + ((1 << 24) + (f(r) << 16) + (f(g) << 8) + f(b)).toString(16).slice(1);
 }
 
 // ---- shape helpers: [tag, attrs, tone]
-const R = (x, y, w, h, r, tone = 'main') => ['rect', { x, y, width: w, height: h, rx: r }, tone];
-const C = (cx, cy, r, tone = 'main') => ['circle', { cx, cy, r }, tone];
 const P = (d, tone = 'main') => ['path', { d }, tone];
+const C = (cx, cy, r, tone = 'main') => ['circle', { cx, cy, r }, tone];
 
-// Body plans. Coordinates are in a 200x200 box. `mounts` are anchor points for attachments.
+// Mirror a path across x = 100 (paths here use absolute M/L/Q/Z only).
+function mx(d) {
+  let i = 0;
+  return d.replace(/-?\d+(\.\d+)?/g, (n) => (i++ % 2 === 0 ? String(200 - Number(n)) : n));
+}
+const both = (d, tone) => [P(d, tone), P(mx(d), tone)];
+
+// Body plans in a 200x200 box.
+// pivot: where a part hinges (for the loose "peeling" tilt). mounts: where upgrade stickers go.
 const BODIES = {
-  // Brawler: hunched gorilla build, huge shoulders and fists, head sunk low.
+  // Brawler: broad heavy-armor build, huge pauldrons and gauntlets.
   brakka: {
-    torso: [
-      P('M54 74 Q100 54 146 74 L138 132 Q100 146 62 132 Z'),
-      P('M64 80 Q100 66 120 72 L114 84 Q92 80 70 90 Z', 'shine'),
-      P('M78 116 L122 116 L116 134 L84 134 Z', 'dark'),
-      P('M86 122 L114 122 M88 128 L112 128', 'line'),
-      R(90, 132, 20, 12, 4, 'dark'),
+    legs: [
+      ...both('M72 134 L92 134 L94 152 L74 152 Z', 'dark'),
+      ...both('M70 150 L96 150 L95 164 L72 164 Z'),
+      ...both('M68 164 L96 164 L99 186 L60 186 Z'),
+      ...both('M72 152 L92 152', 'line'),
     ],
-    head: [P('M80 56 Q100 44 120 56 L118 76 L82 76 Z'), R(87, 61, 26, 8, 4, 'visor'), P('M84 56 Q92 50 100 49', 'shineline')],
+    torso: [
+      P('M78 64 L122 64 L128 76 L72 76 Z', 'dark'),
+      P('M64 74 L136 74 L130 110 L112 128 L88 128 L70 110 Z'),
+      P('M70 78 L104 78 L98 88 L74 92 Z', 'shine'),
+      P('M84 126 L116 126 L112 142 L88 142 Z', 'dark'),
+      P('M100 108 L100 126 M80 112 L88 120 M120 112 L112 120', 'line'),
+    ],
     armL: [
-      P('M22 70 Q40 52 64 66 L58 92 L28 96 Z'), P('M28 70 Q40 60 54 64', 'shineline'),
-      R(28, 92, 30, 36, 10, 'dark'),
-      R(16, 124, 46, 34, 13), P('M28 126 L28 140 M39 126 L39 140 M50 126 L50 140', 'line'),
+      P('M26 66 L64 58 L70 84 L34 92 L22 80 Z'),
+      P('M30 68 L60 62 L58 70 L32 76 Z', 'shine'),
+      P('M38 90 L60 86 L60 106 L40 108 Z', 'dark'),
+      P('M28 104 L64 100 L66 132 L26 134 Z'),
+      P('M32 132 L62 132 L60 152 L34 152 Z', 'dark'),
+      P('M40 136 L40 148 M47 136 L47 148 M54 136 L54 148', 'line'),
     ],
-    armR: [
-      P('M178 70 Q160 52 136 66 L142 92 L172 96 Z'), P('M146 64 Q160 60 172 70', 'shineline'),
-      R(142, 92, 30, 36, 10, 'dark'),
-      R(138, 124, 46, 34, 13), P('M150 126 L150 140 M161 126 L161 140 M172 126 L172 140', 'line'),
+    head: [
+      P('M100 50 L82 32 L89 31 L100 42 L111 31 L118 32 Z', 'accent'),
+      P('M86 44 L114 44 L119 56 L112 70 L88 70 L81 56 Z'),
+      P('M88 47 L104 47 L101 52 L86 53 Z', 'shine'),
+      P('M88 56 L112 56 L109 62 L91 62 Z', 'visor'),
+      P('M93 66 L107 66 L104 73 L96 73 Z', 'dark'),
     ],
-    legs: [
-      R(68, 138, 26, 30, 8, 'dark'), R(106, 138, 26, 30, 8, 'dark'),
-      P('M58 182 L60 166 Q80 158 100 166 L100 182 Z'), P('M100 182 L100 166 Q120 158 140 166 L142 182 Z'),
-    ],
-    core: [100, 100, 13],
-    mounts: { head: [100, 44], armL: [39, 160], armR: [161, 160], legs: [100, 180] },
+    core: [100, 95, 11],
+    pivot: { head: [100, 72], armL: [60, 70], armR: [140, 70], legs: [100, 134] },
+    mounts: { head: [100, 40], armL: [46, 150], armR: [154, 150], legs: [100, 178] },
   },
-  // Gunner: tall and lean, long legs, antenna rig and backpack fins.
+  // Gunner: tall and lean, sensor mono-eye, long antenna and backpack fins.
   longshot: {
-    torso: [
-      P('M64 62 L80 50 L84 64 Z', 'dark'), P('M136 62 L120 50 L116 64 Z', 'dark'),
-      P('M70 64 L130 64 L124 124 L76 124 Z'),
-      P('M76 70 L112 70 L108 80 L78 82 Z', 'shine'),
-      R(82, 110, 36, 14, 5, 'dark'),
-      P('M88 117 L112 117', 'line'),
-    ],
-    head: [P('M86 36 L114 36 L118 58 L82 58 Z'), R(88, 43, 24, 7, 3.5, 'visor'), C(108, 46.5, 5, 'accent'), P('M110 36 L118 16', 'line'), C(118, 15, 4, 'accent')],
-    armL: [C(62, 70, 12, 'dark'), R(44, 76, 20, 34, 8), R(42, 106, 22, 30, 8, 'dark'), R(44, 132, 20, 12, 5)],
-    armR: [C(138, 70, 12, 'dark'), R(136, 76, 20, 34, 8), R(136, 106, 22, 30, 8, 'dark'), R(136, 132, 20, 12, 5)],
     legs: [
-      P('M80 124 L94 124 L92 150 L84 150 Z', 'dark'), P('M106 124 L120 124 L116 150 L108 150 Z', 'dark'),
-      C(88, 152, 6), C(112, 152, 6),
-      P('M82 156 L94 156 L92 178 L84 178 Z', 'dark'), P('M106 156 L118 156 L116 178 L108 178 Z', 'dark'),
-      P('M72 188 L98 188 L94 176 L78 176 Z'), P('M102 188 L128 188 L122 176 L106 176 Z'),
+      ...both('M82 126 L95 126 L95 148 L84 148 Z', 'dark'),
+      ...both('M79 146 L97 146 L96 158 L80 158 Z'),
+      ...both('M81 158 L96 158 L97 178 L83 178 Z', 'dark'),
+      ...both('M74 177 L99 177 L101 188 L68 188 Z'),
     ],
-    core: [100, 94, 11],
-    mounts: { head: [100, 30], armL: [54, 146], armR: [146, 146], legs: [100, 182] },
+    torso: [
+      ...both('M72 66 L56 40 L63 38 L80 62 Z', 'accent'),
+      P('M72 62 L128 62 L124 98 L108 114 L92 114 L76 98 Z'),
+      P('M77 66 L106 66 L101 75 L79 78 Z', 'shine'),
+      P('M88 112 L112 112 L110 130 L90 130 Z', 'dark'),
+      P('M100 98 L100 112 M84 72 L84 92 M116 72 L116 92', 'line'),
+    ],
+    armL: [
+      P('M50 64 L74 62 L76 80 L52 84 Z'),
+      P('M53 66 L70 65 L68 71 L54 73 Z', 'shine'),
+      P('M53 84 L67 82 L67 106 L55 108 Z', 'dark'),
+      P('M48 106 L70 104 L72 136 L50 138 Z'),
+      P('M52 138 L68 138 L66 150 L54 150 Z', 'dark'),
+    ],
+    head: [
+      P('M110 40 L125 16 L129 18 L115 42 Z', 'accent'),
+      P('M88 36 L112 36 L117 48 L110 60 L90 60 L83 48 Z'),
+      P('M90 39 L104 39 L101 44 L88 45 Z', 'shine'),
+      P('M89 47 L111 47 L109 53 L91 53 Z', 'visor'),
+      C(103, 50, 3.2, 'ink'),
+    ],
+    core: [100, 86, 10],
+    pivot: { head: [100, 62], armL: [70, 68], armR: [130, 68], legs: [100, 126] },
+    mounts: { head: [100, 32], armL: [60, 148], armR: [140, 148], legs: [100, 182] },
   },
-  // Tank: a walking bunker. Wide slab body, shoulder bunkers, tread feet.
+  // Tank: a walking fortress. Slab chest, shield pauldrons, wide stance.
   bastion: {
-    torso: [
-      R(46, 66, 108, 76, 16),
-      P('M54 72 L120 72 L116 82 L56 86 Z', 'shine'),
-      R(60, 122, 80, 18, 6, 'dark'),
-      C(58, 130, 2.6, 'ink'), C(142, 130, 2.6, 'ink'), C(58, 76, 2.6, 'ink'), C(142, 76, 2.6, 'ink'),
-    ],
-    head: [P('M78 50 L122 50 L126 72 L74 72 Z'), R(82, 58, 36, 7, 3, 'visor'), P('M78 50 L84 44 L116 44 L122 50', 'dark')],
-    armL: [R(14, 56, 44, 30, 10, 'dark'), P('M20 62 L50 62', 'shineline'), R(22, 84, 32, 48, 10), R(18, 128, 40, 24, 9, 'dark')],
-    armR: [R(142, 56, 44, 30, 10, 'dark'), P('M150 62 L180 62', 'shineline'), R(146, 84, 32, 48, 10), R(142, 128, 40, 24, 9, 'dark')],
     legs: [
-      R(58, 140, 34, 28, 8, 'dark'), R(108, 140, 34, 28, 8, 'dark'),
-      R(48, 164, 52, 22, 10), R(100, 164, 52, 22, 10),
-      P('M56 175 L92 175 M108 175 L144 175', 'line'),
+      ...both('M66 136 L92 136 L92 156 L68 156 Z', 'dark'),
+      ...both('M60 152 L96 152 L94 166 L62 166 Z'),
+      ...both('M54 166 L98 166 L100 188 L52 188 Z'),
+      ...both('M58 177 L96 177', 'line'),
     ],
-    core: [100, 100, 15],
-    mounts: { head: [100, 40], armL: [38, 150], armR: [162, 150], legs: [100, 182] },
+    torso: [
+      P('M74 62 L126 62 L132 72 L68 72 Z', 'dark'),
+      P('M54 70 L146 70 L140 114 L120 134 L80 134 L60 114 Z'),
+      P('M60 74 L110 74 L104 84 L62 88 Z', 'shine'),
+      P('M82 128 L118 128 L114 144 L86 144 Z', 'dark'),
+      P('M66 112 L82 126 M134 112 L118 126 M100 116 L100 128', 'line'),
+      C(64, 80, 2.2, 'ink'), C(136, 80, 2.2, 'ink'),
+    ],
+    armL: [
+      P('M14 56 L58 52 L62 86 L26 94 L12 76 Z'),
+      P('M18 58 L54 55 L52 63 L20 67 Z', 'shine'),
+      P('M30 92 L52 90 L52 110 L32 112 Z', 'dark'),
+      P('M22 108 L58 106 L60 140 L22 142 Z'),
+      P('M28 140 L54 140 L52 156 L30 156 Z', 'dark'),
+      P('M28 120 L52 119', 'line'),
+    ],
+    head: [
+      P('M94 44 L100 32 L106 44 Z', 'accent'),
+      P('M82 42 L118 42 L122 54 L117 66 L83 66 L78 54 Z'),
+      P('M85 45 L106 45 L103 50 L84 51 Z', 'shine'),
+      P('M85 52 L115 52 L113 58 L87 58 Z', 'visor'),
+    ],
+    core: [100, 96, 13],
+    pivot: { head: [100, 66], armL: [56, 66], armR: [144, 66], legs: [100, 136] },
+    mounts: { head: [100, 36], armL: [40, 156], armR: [160, 156], legs: [100, 180] },
   },
-  // Trickster: slim and angular with fins like a cloak, blade forearms.
+  // Trickster: slim and angular, wing fins, blade forearms.
   specter: {
-    torso: [
-      P('M66 66 L40 48 L56 104 Z', 'dark'), P('M134 66 L160 48 L144 104 Z', 'dark'),
-      P('M100 58 L136 76 L120 134 L80 134 L64 76 Z'),
-      P('M100 64 L124 76 L102 82 L74 78 Z', 'shine'),
-      P('M90 120 L110 120 L106 132 L94 132 Z', 'dark'),
-    ],
-    head: [P('M100 22 L124 50 L114 64 L86 64 L76 50 Z'), P('M86 48 L114 48 L108 55 L92 55 Z', 'visor'), P('M100 22 L100 40', 'line')],
-    armL: [C(64, 80, 10, 'dark'), P('M56 86 L70 90 L58 132 L46 128 Z'), P('M46 128 L58 132 L40 168 Z', 'accent')],
-    armR: [C(136, 80, 10, 'dark'), P('M144 86 L130 90 L142 132 L154 128 Z'), P('M154 128 L142 132 L160 168 Z', 'accent')],
     legs: [
-      P('M84 132 L96 132 L90 156 L98 184 L76 184 L80 156 Z', 'dark'),
-      P('M104 132 L116 132 L120 156 L124 184 L102 184 L110 156 Z', 'dark'),
+      ...both('M84 126 L96 126 L94 150 L84 150 Z', 'dark'),
+      ...both('M81 148 L97 148 L92 176 L84 176 Z'),
+      ...both('M76 175 L96 175 L98 186 L70 188 Z', 'dark'),
     ],
-    core: [100, 96, 11],
-    mounts: { head: [100, 18], armL: [44, 160], armR: [156, 160], legs: [100, 182] },
+    torso: [
+      ...both('M72 72 L34 44 L44 42 L82 66 Z', 'accent'),
+      P('M100 56 L132 70 L122 106 L106 120 L94 120 L78 106 L68 70 Z'),
+      P('M100 61 L122 71 L104 78 L78 74 Z', 'shine'),
+      P('M90 118 L110 118 L106 132 L94 132 Z', 'dark'),
+      P('M100 96 L100 118', 'line'),
+    ],
+    armL: [
+      P('M54 68 L74 68 L74 86 L56 90 Z'),
+      P('M56 88 L69 88 L67 106 L58 106 Z', 'dark'),
+      P('M50 104 L71 104 L67 136 L54 138 Z'),
+      P('M52 72 L70 71 L69 77 L54 78 Z', 'shine'),
+      P('M53 136 L65 136 L46 172 Z', 'accent'),
+    ],
+    head: [
+      P('M100 26 L100 12 L104 26 Z', 'accent'),
+      P('M100 26 L117 43 L112 58 L88 58 L83 43 Z'),
+      P('M100 30 L111 41 L96 44 L88 42 Z', 'shine'),
+      P('M89 45 L111 45 L107 51 L93 51 Z', 'visor'),
+    ],
+    core: [100, 88, 10],
+    pivot: { head: [100, 58], armL: [70, 74], armR: [130, 74], legs: [100, 126] },
+    mounts: { head: [100, 24], armL: [58, 140], armR: [142, 140], legs: [100, 180] },
   },
 };
+for (const b of Object.values(BODIES)) b.armR = b.armL.map(([tag, a, tone]) => (tag === 'path' ? P(mx(a.d), tone) : C(200 - a.cx, a.cy, a.r, tone)));
+
+const GLOW = { brakka: '#FFE45C', longshot: '#7DF9FF', bastion: '#C8FFE9', specter: '#FF8CF2' };
+const DECOR = ['line', 'shine', 'shineline', 'ink'];
 
 function attrs(o) {
   return Object.entries(o).map(([k, v]) => `${k}="${v}"`).join(' ');
 }
 
-function toneFill(tone, pal) {
+function fillFor(tone, pal) {
   switch (tone) {
     case 'dark': return pal.dark;
     case 'light': return pal.light;
     case 'accent': return pal.accent;
-    case 'visor': return pal.glow || '#9FF3FF';
+    case 'visor': return pal.glow;
     case 'ink': return INK;
-    case 'line': return 'none';
+    case 'white': return '#fff';
+    case 'steel': return '#C9D3EA';
+    case 'steelDark': return '#8E9BC0';
+    case 'gold': return '#FFC929';
+    case 'red': return '#FF4F64';
+    case 'mint': return '#39E3A6';
+    case 'sky': return '#9FF3FF';
     default: return pal.main;
   }
 }
 
-function drawShapes(shapes, pal, pass) {
-  return shapes.map(([tag, a, tone]) => {
-    if (pass === 'back') {
-      if (['line', 'shine', 'shineline', 'ink'].includes(tone)) return '';
-      return `<${tag} ${attrs(a)} fill="#fff" stroke="#fff" stroke-width="14" stroke-linejoin="round"/>`;
-    }
-    if (tone === 'line') return `<${tag} ${attrs(a)} fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>`;
-    if (tone === 'shine') return `<${tag} ${attrs(a)} fill="#fff" fill-opacity=".38"/>`;
-    if (tone === 'shineline') return `<${tag} ${attrs(a)} fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="3.5" stroke-linecap="round"/>`;
-    if (tone === 'ink') return `<${tag} ${attrs(a)} fill="${INK}"/>`;
-    if (tone === 'visor') return `<${tag} ${attrs(a)} fill="${pal.glow || '#9FF3FF'}" stroke="${INK}" stroke-width="3.5" stroke-linejoin="round" class="visor"/>`;
-    return `<${tag} ${attrs(a)} fill="${toneFill(tone, pal)}" stroke="${INK}" stroke-width="3.5" stroke-linejoin="round"/>`;
-  }).join('');
+// One die-cut sticker: soft shadow, white border, then the art with ink outlines.
+function sticker(shapes, pal, { cls = '', attrsStr = '', ghost = false } = {}) {
+  const solid = shapes.filter(([, , t]) => !DECOR.includes(t) && t !== 'visor-free');
+  if (ghost) {
+    const g = solid.map(([tag, a]) => `<${tag} ${attrs(a)}/>`).join('');
+    return `<g class="ghost ${cls}" ${attrsStr} fill="#3A4775" fill-opacity=".35" stroke="#fff" stroke-opacity=".7" stroke-width="2" stroke-dasharray="4 4" stroke-linejoin="round">${g}</g>`;
+  }
+  const outline = solid.map(([tag, a]) => `<${tag} ${attrs(a)}/>`).join('');
+  let art = '';
+  for (const [tag, a, tone] of shapes) {
+    if (tone === 'line') art += `<${tag} ${attrs(a)} fill="none" stroke="${INK}" stroke-width="1.6" stroke-linecap="round" opacity=".55"/>`;
+    else if (tone === 'shine') art += `<${tag} ${attrs(a)} fill="#fff" fill-opacity=".45"/>`;
+    else if (tone === 'shineline') art += `<${tag} ${attrs(a)} fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.4" stroke-linecap="round"/>`;
+    else if (tone === 'ink') art += `<${tag} ${attrs(a)} fill="${INK}"/>`;
+    else art += `<${tag} ${attrs(a)} fill="${fillFor(tone, pal)}" stroke="${INK}" stroke-width="${LINE_W}" stroke-linejoin="round"${tone === 'visor' ? ' class="visor"' : ''}/>`;
+  }
+  return `<g class="stk ${cls}" ${attrsStr}>
+    <g class="stk-shadow" transform="translate(0 3)" fill="#08123F" stroke="#08123F" stroke-width="${CUT_W}" stroke-linejoin="round" opacity=".32">${outline}</g>
+    <g class="stk-cut" fill="#fff" stroke="#fff" stroke-width="${CUT_W}" stroke-linejoin="round">${outline}</g>
+    ${art}</g>`;
 }
 
-// Attachment art for mounted cards.
-function mountArt(id, x, y, limb, pal) {
+// ---- Upgrade stickers. Shapes are relative to the mount anchor (0,0).
+function mountShapes(id, limb) {
   const c = CARDS[id];
-  const down = limb === 'armL' || limb === 'armR';
-  const s = (inner) => `<g transform="translate(${x} ${y})">${inner}</g>`;
-  const st = `stroke="${INK}" stroke-width="3" stroke-linejoin="round"`;
+  const flip = limb === 'armR' ? -1 : 1;
+  const X = (x) => x * flip;
+  const poly = (pts, tone) => P('M' + pts.map(([x, y]) => `${X(x)} ${y}`).join(' L') + ' Z', tone);
   if (c.type === 'weapon') {
-    if (limb === 'legs') {
-      return s(`<rect x="-26" y="-12" width="52" height="16" rx="5" fill="#fff" ${st}/><circle cx="-14" cy="-4" r="4" fill="#FF4F64" ${st}/><circle cx="0" cy="-4" r="4" fill="#FF4F64" ${st}/><circle cx="14" cy="-4" r="4" fill="#FF4F64" ${st}/>`);
+    if (limb === 'legs') { // hip missile pods
+      return [poly([[-36, -26], [-20, -28], [-18, -8], [-34, -6]], 'steel'), poly([[36, -26], [20, -28], [18, -8], [34, -6]], 'steel'),
+        C(-27, -20, 3.2, 'red'), C(-26, -12, 3.2, 'red'), C(27, -20, 3.2, 'red'), C(26, -12, 3.2, 'red')];
     }
     if (limb === 'head') {
-      return s(`<rect x="-14" y="-10" width="28" height="12" rx="5" fill="#FFC929" ${st}/><rect x="-4" y="-22" width="8" height="14" rx="3" fill="#fff" ${st}/>`);
+      if (c.shred) return [poly([[-12, 4], [0, -14], [12, 4], [6, 8], [-6, 8]], 'gold'), P('M-5 1 L5 1', 'line')]; // headbutt crest
+      if (c.emp) return [poly([[-4, 6], [-3, -12], [3, -12], [4, 6]], 'steel'), C(0, -14, 4.5, 'sky')];
+      return [poly([[-16, 6], [-12, -4], [-6, -4], [-6, 8]], 'steel'), poly([[16, 6], [12, -4], [6, -4], [6, 8]], 'steel'), C(-10, 1, 2, 'ink'), C(10, 1, 2, 'ink')];
     }
-    const long = c.dmg >= 5;
-    const len = long ? 34 : 22;
-    return s(`<rect x="-9" y="-6" width="18" height="16" rx="5" fill="#FFC929" ${st}/><rect x="-5" y="${down ? 8 : -len}" width="10" height="${len}" rx="4" fill="#fff" ${st}/>${c.snipe ? `<path d="M-5 ${8 + len} L0 ${16 + len} L5 ${8 + len} Z" fill="#9FF3FF" ${st}/>` : ''}`);
+    // Arm weapons: carried along the forearm, barrel pointing down.
+    if (c.dmg >= 6 || c.pierce >= 2) { // rail lance: long barrel
+      return [poly([[-8, -46], [6, -46], [8, -14], [-6, -14]], 'steel'), poly([[-4, -14], [4, -14], [3, 26], [-3, 26]], 'white'),
+        poly([[-6, 22], [6, 22], [5, 30], [-5, 30]], 'sky'), P(`M${X(-6)} -36 L${X(6)} -36`, 'line')];
+    }
+    if (id === 'sniper_pistol') {
+      return [poly([[-8, -22], [8, -22], [8, -8], [-8, -8]], 'steel'), poly([[-3, -8], [3, -8], [3, 12], [-3, 12]], 'white'), C(X(9), -18, 3, 'sky')];
+    }
+    if (id === 'ghost_blade') return [poly([[-6, -14], [6, -14], [3, 30], [-12, 40]], 'sky'), poly([[-8, -18], [8, -18], [8, -10], [-8, -10]], 'dark')];
+    if (c.bash) return [poly([[-14, -34], [14, -34], [16, -6], [0, 6], [-16, -6]], 'mint'), P(`M0 -30 L0 0`, 'line')];
+    const len = c.dmg >= 5 ? 22 : 16; // rifles and cannons
+    return [poly([[-10, -30], [10, -30], [10, -10], [-10, -10]], 'steel'), poly([[-4, -10], [4, -10], [4, len], [-4, len]], 'white'),
+      ...(c.dmg >= 5 ? [poly([[-9, -10], [-5, -10], [-5, len - 2], [-9, len - 2]], 'white')] : []), P(`M${X(-6)} -22 L${X(6)} -22`, 'line')];
   }
   if (c.type === 'boost') {
-    if (c.punch) return s(`<rect x="-16" y="-12" width="32" height="22" rx="8" fill="#FFC929" ${st}/><path d="M-8 -12 L-8 10 M0 -12 L0 10 M8 -12 L8 10" stroke="${INK}" stroke-width="2.5"/>`);
-    if (c.oracle) return s(`<circle r="11" fill="#fff" ${st}/><circle r="6" fill="#B57BFF" ${st}/><circle r="2.2" fill="${INK}"/>`);
-    if (c.weaponBonus) return s(`<rect x="-16" y="-8" width="32" height="12" rx="5" fill="#9FF3FF" ${st}/><circle cx="14" cy="-2" r="6" fill="#fff" ${st}/>`);
-    if (c.guardGen) return s(`<path d="M-24 4 Q0 -26 24 4 Z" fill="#39E3A6" fill-opacity=".85" ${st}/>`);
-    if (c.guardBlock) return s(`<path d="M-12 -16 L12 -16 L12 4 Q0 16 -12 4 Z" fill="#39E3A6" ${st}/>`);
-    return s(`<path d="M-22 -2 L-10 -10 L10 -10 L22 -2 L10 4 L-10 4 Z" fill="#FFC929" ${st}/><path d="M-16 4 L-20 12 M16 4 L20 12" stroke="#FF8A3D" stroke-width="4" stroke-linecap="round"/>`);
+    if (c.punch) { // gauntlet sticker swaps over the fist
+      const big = c.shred;
+      return [poly([[-17, -20], [17, -20], [19, 6], [-19, 6]], big ? 'red' : 'gold'),
+        poly([[-14, 6], [14, 6], [12, 14], [-12, 14]], 'dark'),
+        ...(big ? [poly([[-12, 14], [-8, 22], [-4, 14]], 'white'), poly([[-2, 14], [2, 22], [6, 14]], 'white'), poly([[8, 14], [12, 22], [14, 14]], 'white')] : []),
+        P('M-8 -14 L-8 2 M0 -14 L0 2 M8 -14 L8 2', 'line')];
+    }
+    if (c.kick && c.ap && id !== 'phase_treads') { // boot thrusters
+      return [poly([[-40, -10], [-22, -12], [-20, 6], [-38, 8]], 'gold'), poly([[40, -10], [22, -12], [20, 6], [38, 8]], 'gold'),
+        poly([[-36, 8], [-26, 8], [-31, 18]], 'red'), poly([[36, 8], [26, 8], [31, 18]], 'red')];
+    }
+    if (c.ap) { // phase treads: leg fins
+      return [poly([[-30, -40], [-20, -38], [-24, -10], [-38, -16]], 'accent'), poly([[30, -40], [20, -38], [24, -10], [38, -16]], 'accent')];
+    }
+    if (c.oracle) return [poly([[-12, 6], [0, -8], [12, 6], [0, 14]], 'white'), C(0, 3, 5.5, 'accent'), C(0, 3, 2.2, 'ink')];
+    if (c.weaponBonus) return [poly([[2, 0], [18, -4], [20, 6], [4, 10]], 'steel'), C(14, 3, 4.5, 'sky')];
+    if (c.guardGen) return [poly([[-22, -18], [22, -18], [16, -4], [-16, -4]], 'steel'), P('M-14 -18 Q0 -38 14 -18 Z', 'mint')];
+    if (c.guardBlock) return [poly([[-16, -44], [16, -44], [18, -12], [0, 2], [-18, -12]], 'mint'), poly([[-10, -38], [6, -38], [2, -30], [-10, -28]], 'white')];
   }
-  return '';
+  return [];
 }
 
-function platingArt(limb, body) {
-  const [x, y] = { head: [100, 60], armL: [body.mounts.armL[0], 110], armR: [body.mounts.armR[0], 110], legs: [100, 156] }[limb];
-  return `<g transform="translate(${x} ${y})"><rect x="-13" y="-9" width="26" height="18" rx="4" fill="#C9D3EA" stroke="${INK}" stroke-width="2.5"/><circle cx="-7" cy="-3" r="1.8" fill="${INK}"/><circle cx="7" cy="-3" r="1.8" fill="${INK}"/><circle cx="-7" cy="4" r="1.8" fill="${INK}"/><circle cx="7" cy="4" r="1.8" fill="${INK}"/></g>`;
+function platingShapes(limb, body) {
+  const at = { head: [100, 50], legs: [100, 158], armL: [body.mounts.armL[0], 116], armR: [body.mounts.armR[0], 116] }[limb];
+  const [x, y] = at;
+  const w = limb === 'head' ? 12 : 13, h = limb === 'head' ? 7 : 10;
+  if (limb === 'legs') {
+    return [P(`M${x - 34} ${y - h} L${x - 14} ${y - h} L${x - 15} ${y + h} L${x - 33} ${y + h} Z`, 'steel'),
+      P(`M${x + 34} ${y - h} L${x + 14} ${y - h} L${x + 15} ${y + h} L${x + 33} ${y + h} Z`, 'steel'),
+      C(x - 24, y, 1.8, 'ink'), C(x + 24, y, 1.8, 'ink')];
+  }
+  return [P(`M${x - w} ${y - h} L${x + w} ${y - h} L${x + w - 2} ${y + h} L${x - w + 2} ${y + h} Z`, 'steel'),
+    C(x - w + 5, y - h + 4, 1.6, 'ink'), C(x + w - 5, y - h + 4, 1.6, 'ink'), P(`M${x - w + 4} ${y + 2} L${x + w - 4} ${y + 2}`, 'line')];
 }
 
-function crackArt(limb, body) {
-  const [x, y] = { head: [100, 58], armL: [body.mounts.armL[0], 104], armR: [body.mounts.armR[0], 104], legs: [86, 152] }[limb];
-  return `<path d="M${x - 8} ${y - 8} L${x - 1} ${y - 1} L${x - 5} ${y + 3} L${x + 7} ${y + 10}" fill="none" stroke="${INK}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+function scuffs(limb, body) {
+  const [x, y] = { head: [106, 52], armL: [body.mounts.armL[0] + 4, 116], armR: [body.mounts.armR[0] - 4, 116], legs: [84, 160] }[limb];
+  return `<g stroke="${INK}" stroke-width="1.6" stroke-linecap="round" opacity=".7" fill="none">
+    <path d="M${x - 6} ${y - 5} L${x + 1} ${y + 1} L${x - 2} ${y + 4} L${x + 6} ${y + 9}"/><path d="M${x + 4} ${y - 6} L${x + 8} ${y - 2}"/></g>`;
 }
 
-// Visor glow and torso emblem per Frame.
-const GLOW = { brakka: '#FFE45C', longshot: '#7DF9FF', bastion: '#C8FFE9', specter: '#FF8CF2' };
-const EMBLEM = {
-  brakka: (x, y) => `<g transform="translate(${x} ${y})"><rect x="-8" y="-5" width="16" height="10" rx="3" fill="#fff"/><path d="M-3 -5V2M2 -5V2" stroke="${INK}" stroke-width="1.6"/></g>`,
-  longshot: (x, y) => `<g transform="translate(${x} ${y})" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><circle r="5.5"/><path d="M0 -9V-3M0 3V9M-9 0H-3M3 0H9"/></g>`,
-  bastion: (x, y) => `<g transform="translate(${x} ${y})"><path d="M-7 -7H7V0Q7 6 0 8Q-7 6 -7 0Z" fill="#fff"/></g>`,
-  specter: (x, y) => `<g transform="translate(${x} ${y})"><path d="M-8 0Q0 -7 8 0Q0 7 -8 0Z" fill="#fff"/><circle r="2.4" fill="${INK}"/></g>`,
-};
-const EMBLEM_POS = { brakka: [124, 80], longshot: [116, 74], bastion: [128, 82], specter: [100, 70] };
 let uidCounter = 0;
-const DECOR = ['line', 'shine', 'shineline', 'ink', 'visor'];
 
 // player: a game player object (or null for a clean showcase render)
+// opts.slap = limb whose newest upgrade just landed; opts.peel = limb that was just destroyed
 export function mechSVG(frameId, player = null, opts = {}) {
   const body = BODIES[frameId];
   const f = FRAMES[frameId];
   const uid = `m${++uidCounter}`;
-  const pal = { main: f.color, dark: shade(f.color, -0.28), light: shade(f.color, 0.45), accent: f.accent, glow: GLOW[frameId] };
+  const pal = { main: f.color, dark: shade(f.color, -0.3), light: shade(f.color, 0.45), accent: f.accent, glow: GLOW[frameId] };
   const order = ['legs', 'torso', 'armL', 'armR', 'head'];
-  const limbState = (k) => (player && k !== 'torso' ? player.limbs[k] : null);
+  let out = '';
+  let clipDefs = '';
 
-  let back = '', front = '', clip = '', details = '';
   for (const k of order) {
-    const ls = limbState(k);
+    const ls = player && k !== 'torso' ? player.limbs[k] : null;
     const destroyed = ls && !ls.alive;
-    const shapes = body[k];
-    if (!destroyed) {
-      back += drawShapes(shapes, pal, 'back');
-      clip += shapes.filter(([, , t]) => !DECOR.includes(t)).map(([tag, a]) => `<${tag} ${attrs(a)}/>`).join('');
-    }
-    const cls = k === 'torso' ? 'part torso' : `part limb ${destroyed ? 'destroyed' : ''}`;
-    const drawn = destroyed
-      ? shapes.filter(([, , t]) => !DECOR.includes(t)).map(([tag, a]) => `<${tag} ${attrs(a)} fill="#4C5778" fill-opacity=".45" stroke="#fff" stroke-opacity=".75" stroke-width="2.5" stroke-dasharray="5 4" stroke-linejoin="round"/>`).join('')
-      : drawShapes(shapes, pal, 'front');
-    front += `<g class="${cls}" data-limb="${k}">${drawn}</g>`;
+    const isLimb = k !== 'torso';
+    const [px, py] = body.pivot[k] || [100, 100];
+    const loose = ls && ls.alive && ls.hp <= ls.max / 2;
+    const tilt = loose ? ({ armL: -5, armR: 5, head: 4, legs: -2 }[k]) : 0;
+    const tf = tilt ? `transform="rotate(${tilt} ${px} ${py})"` : '';
+    const partCls = isLimb ? `part limb ${destroyed ? 'destroyed' : ''} ${loose ? 'loose' : ''}` : 'part torso';
 
-    // Details sit above the cel shading so they stay crisp.
-    let d = '';
-    if (ls && ls.alive) {
-      if (ls.plating) d += platingArt(k, body);
-      if (ls.hp <= ls.max / 2) d += crackArt(k, body);
-      if (ls.mount) d += mountArt(ls.mount.id, ...body.mounts[k], k, pal);
-    }
     if (destroyed) {
+      out += `<g class="${partCls}" data-limb="${k}">${sticker(body[k], pal, { ghost: true })}`;
       const [x, y] = body.mounts[k];
-      const cy = k === 'legs' ? y - 20 : k === 'head' ? y + 18 : 110;
-      d += `<g transform="translate(${x} ${cy})"><circle r="9" fill="${INK}"/><path d="M-4 -4L4 4M4 -4L-4 4" stroke="#FF4F64" stroke-width="3" stroke-linecap="round"/></g>`;
+      const cy = k === 'legs' ? y - 22 : k === 'head' ? y + 14 : 112;
+      out += `<g transform="translate(${x} ${cy})"><circle r="8" fill="${INK}"/><path d="M-3.5 -3.5L3.5 3.5M3.5 -3.5L-3.5 3.5" stroke="#FF4F64" stroke-width="2.6" stroke-linecap="round"/></g></g>`;
+      if (opts.peel === k) out += `<g class="peel" style="transform-origin:${px}px ${py}px">${sticker(body[k], pal)}</g>`;
+      continue;
+    }
+
+    // Cel shade per part: a hard-edged dark band clipped to the part's shape.
+    const clipId = `c${uid}${k}`;
+    clipDefs += `<clipPath id="${clipId}">${body[k].filter(([, , t]) => !DECOR.includes(t)).map(([tag, a]) => `<${tag} ${attrs(a)}/>`).join('')}</clipPath>`;
+    let inner = sticker(body[k], pal, { cls: 'part-stk' });
+    inner += `<rect x="0" y="0" width="200" height="200" fill="url(#g${uid})" clip-path="url(#${clipId})" pointer-events="none"/>`;
+
+    if (ls) {
+      if (loose) inner += scuffs(k, body);
+      if (ls.plating) inner += sticker(platingShapes(k, body), pal, { cls: `up plating ${opts.slap === k && opts.slapKind === 'plating' ? 'slap' : ''}` });
+      if (ls.mount) {
+        const [mxp, myp] = body.mounts[k];
+        inner += sticker(mountShapes(ls.mount.id, k), pal, { cls: `up mount ${opts.slap === k && opts.slapKind !== 'plating' ? 'slap' : ''}`, attrsStr: `transform="translate(${mxp} ${myp})"` });
+      }
     }
     if (k === 'torso') {
-      const [ex, ey] = EMBLEM_POS[frameId];
-      d += EMBLEM[frameId](ex, ey);
       const [cx, cy, r] = body.core;
       const pct = player ? player.core / 20 : 1;
       const glow = pct >= 0.75 ? '#FFC929' : pct >= 0.4 ? '#FF8A3D' : '#FF4F64';
-      const exposed = player && LIMB_KEYS.filter((x) => !player.limbs[x].alive).length >= 2;
-      d += `<g class="core-gem ${exposed ? 'exposed' : ''}" data-limb="core">
-        ${exposed ? `<circle cx="${cx}" cy="${cy}" r="${r + 9}" fill="none" stroke="#FF4F64" stroke-width="3" stroke-dasharray="4 4" class="core-ring"/>` : ''}
-        <circle cx="${cx}" cy="${cy}" r="${r + 4}" fill="${INK}"/><circle cx="${cx}" cy="${cy}" r="${r}" fill="#fff"/>
+      const exposed = player && ['head', 'armL', 'armR', 'legs'].filter((x) => !player.limbs[x].alive).length >= 2;
+      inner += `<g class="core-gem ${exposed ? 'exposed' : ''}" data-limb="core">
+        ${exposed ? `<circle cx="${cx}" cy="${cy}" r="${r + 8}" fill="none" stroke="#FF4F64" stroke-width="2.5" stroke-dasharray="4 4" class="core-ring"/>` : ''}
+        <circle cx="${cx}" cy="${cy}" r="${r + 3.5}" fill="${INK}"/><circle cx="${cx}" cy="${cy}" r="${r}" fill="#fff"/>
         <circle cx="${cx}" cy="${cy}" r="${r}" fill="${glow}" class="core-glow"/>
-        <circle cx="${cx - r / 3}" cy="${cy - r / 3}" r="${r / 3.2}" fill="#fff" opacity=".85"/></g>`;
+        <path d="M${cx - r * 0.55} ${cy - r * 0.15} A${r * 0.6} ${r * 0.6} 0 0 1 ${cx + r * 0.1} ${cy - r * 0.6}" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" opacity=".9"/></g>`;
     }
-    if (d) details += `<g class="part-detail" data-limb="${k === 'torso' ? 'core' : k}">${d}</g>`;
+    out += `<g class="${partCls}" data-limb="${k}" ${tf}>${inner}</g>`;
   }
 
   let drones = '';
   if (player && player.guard > 0) {
     for (let i = 0; i < player.guard; i++) {
-      const gx = 22 + i * 22, gy = 22;
-      drones += `<g transform="translate(${gx} ${gy})"><g class="drone" style="animation-delay:${i * -0.4}s"><circle r="9" fill="#fff" stroke="#fff" stroke-width="8"/><circle r="9" fill="#39E3A6" stroke="${INK}" stroke-width="3"/><path d="M-4 0 L4 0" stroke="${INK}" stroke-width="3" stroke-linecap="round"/></g></g>`;
+      const gx = 22 + i * 21, gy = 20;
+      drones += `<g transform="translate(${gx} ${gy})"><g class="drone" style="animation-delay:${i * -0.4}s">${sticker([P('M-9 0 L0 -7 L9 0 L0 7 Z', 'mint'), C(0, 0, 2.4, 'ink')], pal)}</g></g>`;
     }
   }
   return `<svg class="mech-svg" viewBox="0 0 200 200" role="img" aria-label="${f.name}">
-    <defs>
-      <clipPath id="c${uid}">${clip}</clipPath>
-      <linearGradient id="g${uid}" x1="0" x2="1" y1="0" y2="0.25">
-        <stop offset="0.6" stop-color="${INK}" stop-opacity="0"/><stop offset="0.6" stop-color="${INK}" stop-opacity=".2"/>
+    <defs>${clipDefs}
+      <linearGradient id="g${uid}" x1="0" x2="1" y1="0" y2="0.3">
+        <stop offset="0.62" stop-color="${INK}" stop-opacity="0"/><stop offset="0.62" stop-color="${INK}" stop-opacity=".18"/>
       </linearGradient>
     </defs>
-    <ellipse cx="100" cy="193" rx="62" ry="6" fill="#08123F" opacity=".38"/>
-    <g class="bob">
-      <g class="sticker-back">${back}</g>
-      <g class="sticker-front">${front}</g>
-      <rect x="0" y="0" width="200" height="200" fill="url(#g${uid})" clip-path="url(#c${uid})" pointer-events="none"/>
-      ${details}
-    </g>${drones}</svg>`;
+    <ellipse cx="100" cy="193" rx="56" ry="5" fill="#08123F" opacity=".35"/>
+    <g class="bob">${out}</g>${drones}</svg>`;
 }
 
-const LIMB_KEYS = ['head', 'armL', 'armR', 'legs'];
+// A single upgrade as a standalone sticker (Workshop slots, card art).
+export function upgradeSticker(id) {
+  const c = CARDS[id];
+  if (!c.slots || (c.type !== 'weapon' && c.type !== 'boost')) return null;
+  const limb = c.slots.includes('armL') ? 'armL' : c.slots[0];
+  const shapes = mountShapes(id, limb);
+  if (!shapes.length) return null;
+  const pal = { main: '#C9D3EA', dark: '#4C5778', light: '#fff', accent: c.frame ? FRAMES[c.frame].color : '#FFC929', glow: '#9FF3FF' };
+  return `<svg class="icon up-icon" viewBox="-50 -50 100 100" aria-hidden="true">${sticker(shapes, pal)}</svg>`;
+}
 
-// Where a limb's HP chip sits, as % of the mech box.
+// Where a limb's HP tag sits, as % of the mech box.
 export function chipPos(frameId, limb) {
   const b = BODIES[frameId];
   const pos = {
-    head: [100, Math.max(8, b.mounts.head[1] - 4)],
-    armL: [Math.max(12, b.mounts.armL[0] - 18), 100],
-    armR: [Math.min(188, b.mounts.armR[0] + 18), 100],
-    legs: [100, 194],
-    core: [b.core[0], b.core[1] + b.core[2] + 17],
+    head: [100, Math.max(8, b.mounts.head[1] - 8)],
+    armL: [Math.max(12, b.pivot.armL[0] - 34), b.pivot.armL[1] + 16],
+    armR: [Math.min(188, b.pivot.armR[0] + 34), b.pivot.armR[1] + 16],
+    legs: [100, 195],
+    core: [b.core[0], b.core[1] + b.core[2] + 15],
   }[limb];
   return [pos[0] / 2, pos[1] / 2];
 }
@@ -335,14 +444,14 @@ export const TYPE_COLORS = {
 };
 export const TYPE_NAMES = { weapon: 'Weapon', boost: 'Upgrade', plating: 'Plating', support: 'Support', order: 'Order' };
 
-// The logo: a chunky die-cut wordmark.
+// The logo: a die-cut wordmark.
 export function logoSVG() {
-  return `<svg class="logo" viewBox="0 0 360 150" role="img" aria-label="Mech Wars">
-    <g font-family="'Lilita One', 'Arial Black', sans-serif" font-size="74" text-anchor="middle" paint-order="stroke" stroke-linejoin="round">
-      <text x="180" y="72" fill="#fff" stroke="#fff" stroke-width="26">MECH</text>
-      <text x="180" y="138" fill="#fff" stroke="#fff" stroke-width="26">WARS</text>
-      <text x="180" y="72" fill="#FFC929" stroke="${INK}" stroke-width="7">MECH</text>
-      <text x="180" y="138" fill="#FF4F64" stroke="${INK}" stroke-width="7">WARS</text>
+  return `<svg class="logo" viewBox="0 0 360 160" role="img" aria-label="Mech Wars">
+    <g font-family="Oxanium, 'Arial Black', sans-serif" font-weight="800" text-anchor="middle" stroke-linejoin="round" transform="skewX(-8) translate(12 0)">
+      <text x="180" y="74" font-size="80" fill="#fff" stroke="#fff" stroke-width="22" letter-spacing="2">MECH</text>
+      <text x="180" y="146" font-size="80" fill="#fff" stroke="#fff" stroke-width="22" letter-spacing="2">WARS</text>
+      <text x="180" y="74" font-size="80" fill="#FFC929" stroke="${INK}" stroke-width="5" paint-order="stroke" letter-spacing="2">MECH</text>
+      <text x="180" y="146" font-size="80" fill="#FF4F64" stroke="${INK}" stroke-width="5" paint-order="stroke" letter-spacing="2">WARS</text>
     </g></svg>`;
 }
 

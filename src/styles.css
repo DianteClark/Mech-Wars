@@ -3,7 +3,7 @@
    Side colors: hazard yellow = you, alarm red = enemy. Mint = repair / guard. */
 
 /* Bundled fonts (work offline) */
-@font-face { font-family: 'Lilita One'; src: url('../fonts/lilita-one.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Oxanium'; src: url('../fonts/oxanium-800.woff2') format('woff2'); font-weight: 400 900; font-display: swap; }
 @font-face { font-family: 'Rubik'; src: url('../fonts/rubik-500.woff2') format('woff2'); font-weight: 500; font-display: swap; }
 @font-face { font-family: 'Rubik'; src: url('../fonts/rubik-600.woff2') format('woff2'); font-weight: 600; font-display: swap; }
 @font-face { font-family: 'Rubik'; src: url('../fonts/rubik-700.woff2') format('woff2'); font-weight: 700; font-display: swap; }
@@ -28,11 +28,11 @@
   --mint: #39E3A6;
   --violet: #B57BFF;
 
-  --display: 'Lilita One', 'Arial Black', system-ui, sans-serif;
+  --display: 'Oxanium', 'Arial Black', system-ui, sans-serif;
   --body: 'Rubik', system-ui, -apple-system, sans-serif;
 
-  --sticker: 0 0 0 3px var(--ink), 0 0 0 7px var(--paper), 0 7px 0 7px rgba(8, 18, 70, 0.45);
-  --sticker-sm: 0 0 0 2.5px var(--ink), 0 0 0 5px var(--paper), 0 5px 0 5px rgba(8, 18, 70, 0.4);
+  --sticker: 0 0 0 2.5px var(--ink), 0 0 0 6px var(--paper), 0 6px 0 6px rgba(8, 18, 70, 0.34);
+  --sticker-sm: 0 0 0 2px var(--ink), 0 0 0 4.5px var(--paper), 0 4px 0 4.5px rgba(8, 18, 70, 0.3);
   --ink-ring: 0 0 0 2.5px var(--ink);
 
   /* iPhone safe areas (notch / Dynamic Island / home indicator) */
@@ -101,9 +101,10 @@ svg { display: block; }
 h1, h2, h3, .display { font-family: var(--display); font-weight: 400; margin: 0; letter-spacing: 0.01em; }
 .ink-text {
   color: var(--paper);
-  text-shadow: 0 2px 0 var(--ink), 0 -2px 0 var(--ink), 2px 0 0 var(--ink), -2px 0 0 var(--ink),
-    2px 2px 0 var(--ink), -2px 2px 0 var(--ink), 2px -2px 0 var(--ink), -2px -2px 0 var(--ink), 0 5px 0 var(--ink);
+  text-shadow: 0 1.5px 0 var(--ink), 0 -1.5px 0 var(--ink), 1.5px 0 0 var(--ink), -1.5px 0 0 var(--ink),
+    1.5px 1.5px 0 var(--ink), -1.5px 1.5px 0 var(--ink), 1.5px -1.5px 0 var(--ink), -1.5px -1.5px 0 var(--ink), 0 4px 0 rgba(18, 22, 51, 0.8);
 }
+h1, h2, .floor-num, .vs-info b, .turn-banner b { letter-spacing: -0.01em; }
 .muted { color: rgba(255, 255, 255, 0.82); }
 .center { text-align: center; }
 .small-note { font-size: 13px; margin-top: 18px; }
@@ -114,11 +115,11 @@ p { margin: 0; line-height: 1.4; }
 .btn {
   appearance: none; border: 0; cursor: pointer;
   font-family: var(--display); font-size: 20px; line-height: 1.05; color: var(--ink);
-  background: var(--hazard); border-radius: 16px; padding: 14px 20px; min-height: 52px;
+  background: var(--hazard); border-radius: 13px; padding: 14px 20px; min-height: 52px;
   box-shadow: var(--sticker);
   transition: transform 0.08s ease, box-shadow 0.08s ease;
 }
-.btn:active { transform: translateY(4px); box-shadow: 0 0 0 3px var(--ink), 0 0 0 7px var(--paper), 0 3px 0 7px rgba(8, 18, 70, 0.45); }
+.btn:active { transform: translateY(3px); box-shadow: 0 0 0 2.5px var(--ink), 0 0 0 6px var(--paper), 0 3px 0 6px rgba(8, 18, 70, 0.34); }
 .btn:disabled { filter: grayscale(0.85) brightness(0.9); opacity: 0.65; }
 .btn.red { background: var(--alarm); color: var(--paper); }
 .btn.mint { background: var(--mint); }
@@ -220,7 +221,7 @@ p { margin: 0; line-height: 1.4; }
 .choice:disabled { opacity: 0.55; }
 .detail-panel { background: var(--paper); color: var(--ink); border-radius: 18px; padding: 14px; box-shadow: var(--sticker); }
 .detail-panel p, .detail-panel li { font-size: 14px; color: #2A3152; }
-.detail-panel .kv { display: grid; grid-template-columns: 76px 1fr; gap: 8px; align-items: baseline; margin-top: 8px; }
+.detail-panel .kv { display: grid; grid-template-columns: 92px 1fr; gap: 8px; align-items: baseline; margin-top: 8px; }
 .detail-panel .kv b { font-family: var(--display); font-weight: 400; font-size: 15px; }
 .dp-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
 .dp-head b { font-family: var(--display); font-weight: 400; font-size: 22px; }
@@ -350,6 +351,22 @@ p { margin: 0; line-height: 1.4; }
 .drone { animation: hover 2s ease-in-out infinite; }
 @keyframes hover { 50% { transform: translateY(-3px); } }
 
+/* Modular part stickers */
+.mech-svg .stk-shadow { transition: transform 0.2s ease; }
+.mech-svg .up.slap { animation: slap 0.55s cubic-bezier(.2,1.5,.45,1) both; transform-box: fill-box; transform-origin: center; }
+@keyframes slap {
+  0% { transform: scale(1.9) rotate(-14deg); opacity: 0; }
+  55% { transform: scale(0.92) rotate(2deg); opacity: 1; }
+  100% { transform: none; }
+}
+.mech-svg .peel { animation: peel 0.9s cubic-bezier(.4,0,.6,1) forwards; pointer-events: none; }
+@keyframes peel {
+  0% { transform: none; opacity: 1; }
+  35% { transform: rotate(-10deg) translate(-4px, -6px) scale(1.04); opacity: 1; }
+  100% { transform: rotate(-38deg) translate(-30px, 60px) scale(0.85); opacity: 0; }
+}
+.mech-svg .loose .part-stk { filter: saturate(0.9); }
+
 /* Limb tags */
 .tag {
   position: absolute; transform: translate(-50%, -50%);
@@ -435,7 +452,7 @@ p { margin: 0; line-height: 1.4; }
 .slot.hidden-item { color: var(--ink); font-family: var(--display); font-size: 18px; }
 .slot.hidden-item::before { background: var(--alarm-soft); }
 .slot.hidden-item { line-height: 1; }
-.slot.hidden-item > * { position: relative; }
+.slot.hidden-item > .q { position: relative; line-height: 1; }
 .slot .q { position: relative; }
 .drone-pip { width: 14px; height: 14px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 0 2px var(--ink), 0 0 0 3.5px var(--paper); margin: 0 2px; }
 .slot.targetable { animation: target 0.9s infinite; }
@@ -475,7 +492,7 @@ p { margin: 0; line-height: 1.4; }
 .card:first-child { margin-left: 0; }
 .card .band { height: 46%; border-radius: 10px 10px 4px 4px; margin: 3px 3px 0; display: grid; place-items: center; box-shadow: inset 0 -2.5px 0 rgba(18, 22, 51, 0.25); }
 .card .band .icon { width: 64%; height: 86%; }
-.card .nm { font-family: var(--display); font-size: 12.5px; line-height: 1.02; padding: 5px 5px 0; flex: 1; }
+.card .nm { font-family: var(--display); font-size: 12px; line-height: 1.05; letter-spacing: -0.02em; padding: 5px 5px 0; flex: 1; overflow-wrap: anywhere; hyphens: auto; }
 .card .foot {
   display: inline-flex; align-items: center; gap: 3px; margin: 0 4px 5px; align-self: flex-start;
   font-size: 10.5px; font-weight: 800; color: var(--ink-soft); background: var(--paper-2); border-radius: 7px; padding: 2px 5px;
@@ -687,7 +704,7 @@ body.calm .turn-banner, body.calm .turn-banner > div { animation: floatFade 1s f
   .end-btn { min-height: 46px; font-size: 15px; }
   .hand-zone { height: 104px; }
   .card { --w: clamp(60px, 17.5vw, 76px); }
-  .card .nm { font-size: 11.5px; }
+  .card .nm { font-size: 10.5px; }
   .card .long, .tool-sub { display: none; }
   .tool { padding: 4px 5px; }
   .ticker { font-size: 12px; padding: 5px 10px; }

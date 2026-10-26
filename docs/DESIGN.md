@@ -130,7 +130,11 @@ Each Frame has a 20-card deck: 12 shared crew cards plus 8 of its own. Brakka, L
 
 - **Offline first.** Build and playtest the full offline game before any online work.
 - **AI is the signature threat.** Higher Tower floors must punish mistakes: the climb becomes about game knowledge and skill, not luck. The AI must play fair (no peeking at hidden hands or Workshops); it reasons about what you *might* have.
-- **Art: epic sticker style.** Clean vector art (SVG), bold outlines, white sticker borders, soft drop shadows. No pixel art. References: Harvest Pop, Block Dungeon.
+- **Art: modular sticker mechs, clean anime-mecha style.** Clean vector art (SVG), angular armor, slim ink outlines, crisp highlights, hard cel shading. No pixel art.
+  - Every mech part (head, torso, each arm, legs) is its **own die-cut sticker** with its own white border and shadow.
+  - Upgrades are stickers too: weapons, plating and boosters **slap on** over a part (fist upgrades cover the fist).
+  - Hurt parts hang loose and get scuffed; destroyed parts **peel off** and leave a dashed ghost.
+  - Display type: Oxanium; body type: Rubik.
 - **UI polish is a priority**, not an afterthought. Mobile-friendly from day one.
 
 ## Progression model: fighting-game style
