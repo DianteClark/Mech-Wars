@@ -12,7 +12,7 @@ const DEFAULT = {
   run: null,            // run in progress (includes mid-battle state)
   seenManual: false,
   stats: { wins: 0, losses: 0 },
-  settings: { hints: true, speed: 'normal', haptics: true, motion: 'system' },
+  settings: { hints: true, speed: 'normal', haptics: true, motion: 'system', sound: true },
   seenTips: [],
 };
 
@@ -26,6 +26,8 @@ export function load() {
     // Older saves may be missing newer nested settings.
     cache.settings = { ...DEFAULT.settings, ...(cache.settings || {}) };
     cache.stats = { ...DEFAULT.stats, ...(cache.stats || {}) };
+    // Runs saved by the v1 card battler can't be resumed on the v2 board.
+    if (cache.run && cache.run.v !== 2) cache.run = null;
   } catch {
     cache = structuredClone(DEFAULT);
   }

@@ -1,9 +1,9 @@
 // Offline support. Network first (so updates always arrive when online),
 // falling back to the cached copy when there's no connection.
-const CACHE = 'mechwars-v6';
+const CACHE = 'mechwars-v7';
 const CORE = [
   './', 'index.html', 'manifest.webmanifest', 'src/styles.css',
-  'src/ui/app.js', 'src/ui/art.js', 'src/ui/store.js', 'src/ui/tower.js', 'src/ai-worker.js',
+  'src/ui/app.js', 'src/ui/art.js', 'src/ui/store.js', 'src/ui/tower.js', 'src/ui/sfx.js', 'src/ai-worker.js',
   'src/engine/data.js', 'src/engine/game.js', 'src/engine/ai.js', 'src/engine/rng.js',
   'icons/icon.svg', 'icons/apple-touch-icon.png', 'icons/icon-192.png',
   'fonts/oxanium-800.woff2', 'fonts/rubik-500.woff2', 'fonts/rubik-600.woff2', 'fonts/rubik-700.woff2', 'fonts/rubik-800.woff2',

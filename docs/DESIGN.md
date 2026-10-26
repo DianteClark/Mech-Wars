@@ -1,6 +1,6 @@
 # Mech Wars — Design v2: the tactics board
 
-> **Status: draft for review.** Nothing here is built yet. Numbers are starting points to tune with the simulator.
+> **Status: implemented in v0.7.** Exact numbers live in `src/engine/data.js`; this doc tracks the rules and the tuned values at the time of writing.
 > v1 (alternating limb-punch battles) is archived in `docs/archive/DESIGN-v1.md`.
 
 ## The pitch
@@ -93,7 +93,7 @@ Weapons always beat base attacks. Base attacks keep you in the fight; parts win 
   - Blocked by terrain: the target takes **+2 damage per tile it couldn't move**, plus that terrain's collision bonus, and the terrain takes damage.
   - Blocked by the other mech: both take +2 per blocked tile.
   - Pushed into a river: **Stuck** (no Move action next turn).
-  - Collision damage is split like area damage.
+  - Collision damage goes **straight to the Core** (the whole frame is jarred). Brakka and Ram Spikes add to it.
 - **Pull X:** drag the target X tiles toward the attacker. Same collision rules.
 - **Lock:** the target can't take Move actions on its next turn.
 - **Combo:** pushing or pulling a mech onto a telegraphed tile, or locking it there, is the main way to land heavy precise hits.
@@ -107,6 +107,9 @@ Weapons always beat base attacks. Base attacks keep you in the fight; parts win 
 | Legs | Kick (2, melee, push 1) | Movement | −1 action, Mobility 1 |
 
 - Two limbs destroyed **exposes the Core**.
+- **Frame shock:** every hit that lands on a limb also deals 1 to the Core.
+- **Overkill spills:** damage past a limb's remaining HP goes into the Core.
+- Base limb HP: head 5, arms 6, legs 7 (Frame traits adjust this).
 - **Parts** replace a limb entirely. The old sticker peels off and the new one slaps on. A part sets that limb's HP, armor and attack. Examples:
   - Arms: **Cannon Arm** (direct, quick 4, range 4), **Rail Arm** (direct, heavy precise 9, range 6), **Hammer Arm** (melee 4, push 2), **Harpoon Arm** (direct range 4, quick 2, pull 3), **Drill Arm** (melee 5, ignores brace), **Shield Arm** (no attack; brace is free once per turn), **Mortar Arm** (artillery, heavy area 5 in a plus, range 5).
   - Legs: **Thruster Legs** (Mobility 3), **Tread Legs** (ignore rough terrain, immune to push 1), **Hover Legs** (cross rivers), **Anchor Legs** (immune to push and pull, Mobility 1).
@@ -136,24 +139,29 @@ Each pilot has a **passive** and a **Special**. The pilot's portrait sticker is 
 
 | Pilot | Passive | Special (free, when meter is full) |
 |---|---|---|
-| Vex "Redline" | Overdrive costs 1 less Core | **Redline Rush:** move 3, then a quick attack with +3 damage |
-| Mara Okafor | First card each turn costs 1 less | **Tactical Scan:** reveal the enemy hand and Workshop, +1 action this turn |
-| Old Gus | Finished parts arrive with +2 HP | **Field Repair:** repair every limb for 4, or rebuild one destroyed limb |
-| Kai Tanaka | First attack each turn +1 damage | **Iaido:** precise melee for 8 that ignores brace |
+| Vex "Redline" | Overdrive costs 1 less Core | **Redline Rush:** +1 action, and the next attack deals +3 |
+| Mara Okafor | First card each turn costs 1 less | **Tactical Scan:** +1 action and draw 2 |
+| Old Gus | Parts arrive with +2 HP | **Field Repair:** repair every limb for 4 and rebuild one destroyed limb |
+| Kai Tanaka | First attack each turn +1 damage | **Iaido:** the next attack this turn deals +6 and ignores brace |
+
+Meter: +4 per damage dealt, +2 per damage taken, +15 per crash caused, +20 per heavy attack dodged (100 to fill).
 
 ## 10. Frames (starter four)
 
-| Frame | Actions | Mobility | Identity | Signature part |
-|---|---|---|---|---|
-| **Brakka** (Brawler) | 2 | 2 | Charge in, shove into walls | **Wrecking Hammer Arm:** melee 5, push 2, collisions +2 |
-| **Longshot** (Gunner) | 2 | 2 | Hold sightlines, snipe parts off | **Rail Lance Arm:** direct heavy precise 10, range 6 |
-| **Bastion** (Tank) | 2 | 1 | Hold ground, build cover | **Aegis Projector:** create a 6-HP wall on any open tile within 3 |
-| **Specter** (Trickster) | 3 | 2 | Lock, pull and reposition | **Phase Drive Legs:** Move can teleport up to 3 tiles, ignoring terrain |
+| Frame | Trait | Identity | Signature part |
+|---|---|---|---|
+| **Brakka** (Brawler) | Collisions you cause deal +2 | Charge in, shove into walls | **Wrecking Hammer:** melee 5, push 2 |
+| **Longshot** (Gunner) | Direct fire +1 range | Hold sightlines, snipe parts off | **Rail Lance:** direct heavy precise 10, range 6, 1 energy to fire |
+| **Bastion** (Tank) | Limbs +3 HP, pushes on you 1 shorter | Hold ground, build cover | **Aegis Projector:** raise a 6 HP wall on an open tile within 3 |
+| **Specter** (Trickster) | 3 actions, limbs −1 HP | Lock, pull and reposition | **Phase Drive:** Move teleports up to 3 tiles, ignoring terrain |
+
+Balance (AI vs AI, 240 games): Brakka 50%, Longshot 53%, Bastion 47%, Specter 50%. First player ~52% (opens with 1 action; the second player gets +1 energy on its first turn).
 
 ## 11. Winning
 
 - Core to 0 destroys the mech.
-- Turn limit (30 turns): higher Core wins, to stop stalemates.
+- **Meltdown:** after 18 turns each, both Cores lose 1 at the start of every turn.
+- Turn limit (30 turns each): higher Core wins.
 
 ## 12. The AI
 
@@ -165,7 +173,8 @@ Each pilot has a **passive** and a **Special**. The pilot's portrait sticker is 
 ## 13. Battle Tower
 
 - Fresh fight every floor on a new generated map.
-- **Twists** become battlefield events too: Flooded (more rivers), Wildfire (forests burn each turn), Earthquake (random rubble), Fog (direct fire range −2), plus the v1 rule twists.
+- Floors 1–4 visit each map theme once, then themes are random.
+- **Twists:** Brownout (−1 energy), No repairs, Hot core (Overdrive +1 Core), Flooded (more rivers), Fog (direct fire −2 range for both), Fortress (enemy starts with Heavy Plating everywhere), Ambush (enemy goes first with 2 Guard drones). Ideas for later: Wildfire, Earthquake.
 - Boss floors every 5th floor.
 - Ranked (one loss ends the run) and Practice (retry, half scrap). Local leaderboard for now.
 
@@ -177,18 +186,14 @@ Each pilot has a **passive** and a **Special**. The pilot's portrait sticker is 
 
 ## 15. Build order
 
-1. Review this doc (you are here).
-2. New rules engine: board, terrain, movement, attacks, telegraphs, forced movement, parts and mods. Unit tests.
-3. AI on the new engine, then balance the four Frames with the simulator.
-4. Board and Build screen UI, terrain stickers, telegraph and push effects, new part and mod sticker art.
-5. Tower maps and twists, then polish.
+All five steps shipped in v0.7: rules engine and tests, AI and balance, board and Build screens with new art, Tower maps and twists, polish (sound, undo, previews).
 
 ## Open questions
 
-- [ ] Damage and HP numbers (to tune with the simulator).
-- [ ] Should heavy attacks cost energy to fire, or only to install?
-- [ ] Do parts wear out (limited uses), or last until destroyed?
-- [ ] Can a mech move through the other mech? (Proposed: no.)
-- [ ] Diagonal movement? (Proposed: no, orthogonal only, for readability.)
+- [x] Damage and HP numbers: tuned (see data.js).
+- [x] Heavy attacks: the Rail Lance and Mortar cost 1 energy to fire.
+- [ ] Do parts wear out (limited uses), or last until destroyed? (Currently: last until destroyed.)
+- [x] Mechs can't move through each other.
+- [x] Movement is orthogonal only; melee reaches all 8 neighbors.
 - [ ] Map themes beyond the first four.
 - [ ] PvP later: alternating turns online (asynchronous play is possible).

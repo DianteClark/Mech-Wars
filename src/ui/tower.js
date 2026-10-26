@@ -1,7 +1,9 @@
-// Battle Tower: floor generation, twists, rewards.
-import { FRAME_ORDER, PILOT_ORDER, DOCTRINE_ORDER, TWIST_ORDER } from '../engine/data.js';
-import { createGame } from '../engine/game.js';
+// Battle Tower: floor generation, map themes, twists, rewards.
+import { FRAME_ORDER, PILOT_ORDER, DOCTRINE_ORDER, TWIST_ORDER, THEME_ORDER } from '../engine/data.js';
+import { createGame, makeMap } from '../engine/game.js';
 import { levelForFloor, LEVELS } from '../engine/ai.js';
+
+export const RUN_VERSION = 2;
 
 function hash(a, b) {
   let h = (a ^ 0x9e3779b9) >>> 0;
@@ -20,10 +22,19 @@ export function twistFor(run, floor) {
   return TWIST_ORDER[hash(run.seed, start) % TWIST_ORDER.length];
 }
 
+// Floors 1-4 walk through each map theme once, then it's random.
+export function themeFor(run, floor) {
+  if (floor <= THEME_ORDER.length) return THEME_ORDER[(floor - 1 + (run.seed % THEME_ORDER.length)) % THEME_ORDER.length];
+  return THEME_ORDER[hash(run.seed, floor * 13) % THEME_ORDER.length];
+}
+
 export function enemyFor(run, floor) {
   const h = hash(run.seed, floor * 977);
+  // Don't open the climb with a mirror match.
+  let frame = FRAME_ORDER[h % FRAME_ORDER.length];
+  if (floor === 1 && frame === run.frame) frame = FRAME_ORDER[(h + 1) % FRAME_ORDER.length];
   return {
-    frame: FRAME_ORDER[h % FRAME_ORDER.length],
+    frame,
     pilot: PILOT_ORDER[(h >>> 8) % PILOT_ORDER.length],
     doctrine: floor < 4 ? 'standard' : DOCTRINE_ORDER[(h >>> 16) % DOCTRINE_ORDER.length],
   };
@@ -44,6 +55,7 @@ export function reward(run, floor) {
 
 export function newRun(mode, frame, pilot, doctrine) {
   return {
+    v: RUN_VERSION,
     mode, frame, pilot, doctrine,
     floor: 1,
     seed: (Math.random() * 2 ** 32) >>> 0,
@@ -54,29 +66,47 @@ export function newRun(mode, frame, pilot, doctrine) {
   };
 }
 
-export function startBattle(run) {
+// The exact setup for this floor and attempt (deterministic, so it can be previewed and replayed).
+export function battleSetup(run) {
   const floor = run.floor;
   const twist = twistFor(run, floor);
   const enemy = enemyFor(run, floor);
+  const theme = themeFor(run, floor);
   const youMods = {};
   const foeMods = {};
+  const mapOpts = {};
   if (twist === 'brownout') youMods.brownout = true;
   if (twist === 'norepair') youMods.norepair = true;
-  if (twist === 'shortage') youMods.shortage = true;
   if (twist === 'hotcore') youMods.hotcore = true;
-  if (twist === 'armored') foeMods.limbBonus = 2;
-  if (twist === 'ambush') foeMods.startGuard = 1;
+  if (twist === 'flooded') mapOpts.flooded = true;
+  if (twist === 'fog') mapOpts.fog = true;
+  if (twist === 'fortress') foeMods.fortress = true;
+  if (twist === 'ambush') foeMods.startGuard = 2;
   if (isBoss(floor)) foeMods.limbBonus = (foeMods.limbBonus || 0) + 2;
   const seed = hash(run.seed, floor * 31 + run.attempt);
-  const setup = {
-    players: [
-      { frame: run.frame, pilot: run.pilot, doctrine: run.doctrine, mods: youMods },
-      { ...enemy, mods: foeMods },
-    ],
-    seed,
-    first: twist === 'ambush' ? 1 : 0,
+  return {
+    setup: {
+      players: [
+        { frame: run.frame, pilot: run.pilot, doctrine: run.doctrine, mods: youMods },
+        { ...enemy, mods: foeMods },
+      ],
+      seed,
+      first: twist === 'ambush' ? 1 : 0,
+      theme,
+      mapOpts,
+    },
+    twist, enemy, theme,
   };
-  run.battle = { setup, twist, enemy, aiSeed: hash(seed, 7) };
+}
+
+export function previewMap(run) {
+  const { setup } = battleSetup(run);
+  return makeMap(setup.seed ^ 0xA5A5, setup.theme, setup.mapOpts);
+}
+
+export function startBattle(run) {
+  const b = battleSetup(run);
+  run.battle = { setup: b.setup, twist: b.twist, enemy: b.enemy, theme: b.theme, aiSeed: hash(b.setup.seed, 7) };
   run.actions = [];
-  return createGame(setup);
+  return createGame(b.setup);
 }

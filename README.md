@@ -10,9 +10,9 @@ Each player brings a single **Frame** (their mech), a **Pilot** who shapes how i
 
 ## Status
 
-🎮 **Prototype v0.6 is playable.** Four Frames, a fair-play AI with five skill tiers, Ranked and Practice Tower climbs, a local leaderboard, and scrap unlocks. Works offline once loaded, and installs to the iPhone Home Screen.
+🎮 **Prototype v0.7 is playable.** Turn-based mech tactics on a destructible 6×7 battlefield: four Frames, a fair-play AI with five skill tiers, Ranked and Practice Tower climbs, a local leaderboard, and scrap unlocks. Works offline once loaded, and installs to the iPhone Home Screen.
 
-**New in v0.6:** full art revamp in a serious anime-mecha style. Small die-cut part stickers inside a larger silhouette, all-new item and attachment stickers, new logo and app icon.
+**New in v0.7:** the whole battle system is rebuilt as a tactics board. Move, attack and build on a map with destructible terrain, shove enemies into buildings, dodge telegraphed heavy shots, and swap whole limbs for weapon parts. See the notes below.
 
 **v0.5:** mechs are loose part stickers inside a silhouette; cards are compact stickers you tap to read and drag onto a limb to build; build countdowns show right on the limb.
 
@@ -39,7 +39,6 @@ To run locally: `npm run serve`, then open http://localhost:8080.
 |---|---|
 | `node tools/test.mjs` | Engine tests (rules, replay determinism, AI fairness) |
 | `node tools/sim.mjs [games] [level]` | AI-vs-AI matchup table for balance checks |
-| `node tools/tune.mjs [iterations] [games]` | Self-play tuning of the AI's evaluation weights |
 | `node tools/icons.mjs` | Rebuilds the app icon from the game's head sticker art (PNGs need `@resvg/resvg-js`) |
 
 ## Repo layout
@@ -61,3 +60,14 @@ To run locally: `npm run serve`, then open http://localhost:8080.
 4. More Frames, pilot Orders, sound
 5. Online leaderboard with replay-verified ranked runs
 6. PvP (much later)
+
+### v0.7: the tactics board
+- Full battle rework: a 6×7 destructible battlefield (forests, rubble, buildings, mountains, rivers) where both mechs move anywhere.
+- 2 actions a turn (Specter 3): move, attack, prep (brace or charge) or open the Workshop. Move, attack, move is fair game.
+- Precise hits pick the limb; area hits split. Heavy weapons lock onto glowing tiles and fire next turn, so you can dodge them.
+- Push, pull and lock: shove mechs into buildings, the edge or a river.
+- Parts now replace whole limbs (Cannon Arm, Wrecking Hammer, Rail Lance, Phase Drive…) with new matching sticker art; mods stick on top.
+- Build screen with the full mech, drag-to-install stickers and a view of the enemy's visible build.
+- Pilots on the HUD: portrait, Special meter ring, and the passive lights up when it's ready.
+- Exact damage previews before you fire, undo for moves, synthesized sound effects, map previews and per-floor map themes in the Tower.
+

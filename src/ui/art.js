@@ -27,6 +27,13 @@ const line = (d) => P(d, 'line');
 
 const DECOR = new Set(['line', 'hi', 'hiline', 'glow']);
 
+function shade(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  const f = (c) => Math.max(0, Math.min(255, Math.round(amt < 0 ? c * (1 + amt) : c + (255 - c) * amt)));
+  return '#' + ((1 << 24) + (f(r) << 16) + (f(g) << 8) + f(b)).toString(16).slice(1);
+}
+
 function mix(a, b, t) {
   const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
   const ch = (sh) => Math.round(((pa >> sh) & 255) * (1 - t) + ((pb >> sh) & 255) * t);
@@ -497,10 +504,139 @@ const ITEMS = {
   ],
 };
 
+// New item stickers for v2 mods and tactics.
+Object.assign(ITEMS, {
+  spikes: () => [
+    ...[-8, 0, 8].map((x) => poly('steel', x - 3, 4, x + 3, 4, x, -12)),
+    poly('gun', -12, 3, 12, 3, 11, 10, -11, 10),
+    poly('red', -12, 3, -6, 3, -7, 6, -12, 6),
+  ],
+  demolition: () => [
+    poly('red', -9, -6, 9, -6, 9, 10, -9, 10),
+    poly('gun', -9, -6, 9, -6, 9, -2, -9, -2),
+    R(-3, -12, 6, 6, 'gun', 1),
+    P('M3 -12 Q8 -16 6 -20', 'hiline'),
+    poly('warn', 6, -22, 10, -19, 6, -17),
+    poly('warn', -5, 1, 5, 1, 5, 5, -5, 5),
+  ],
+  emp_net: () => [
+    C(0, 0, 12, 'glass'),
+    P('M-12 0 L12 0 M0 -12 L0 12 M-8.5 -8.5 L8.5 8.5 M8.5 -8.5 L-8.5 8.5', 'line'),
+    C(0, 0, 4, 'beamP'),
+    ...[[-12, 0], [12, 0], [0, -12], [0, 12]].map(([x, y]) => C(x, y, 2.2, 'gun')),
+  ],
+  smoke: () => [
+    C(-6, 2, 8, 'steelS'), C(6, 0, 9, 'steel'), C(0, -7, 7, 'white'),
+    poly('gun', -4, 8, 4, 8, 3, 14, -3, 14),
+    P('M-3 -9 Q0 -12 3 -9', 'hiline'),
+  ],
+});
+const ITEM_ALIAS = { plating: 'scrap_plating', heavy_plating: 'reinforced_plating', scope: 'scope_visor', repair_kit: 'repair_pod', adrenal: 'adrenal_surge' };
+
+// ---------------------------------------------------------------- part stickers (replace a limb)
+// Arm parts are drawn as a left arm (mirrored for the right), in the same space as ARMS.
+
+const pauldron = () => [
+  poly('arm', -12, -24, 9, -24, 13, -15, 10, -8, -10, -8, -13, -15),
+  poly('armS', 0, -24, 9, -24, 13, -15, 10, -8, 0, -8),
+  poly('sec', -12, -15.5, 12.5, -15.5, 11.6, -12, -12.4, -12),
+  poly('hi', -11, -23, -1, -23, -2, -19.5, -12, -18),
+  poly('frm', -4.5, -8, 4.5, -8, 4, 0, -4, 0),
+];
+const PART_ART = {
+  cannon_arm: () => [...pauldron(),
+    poly('gun', -8, 0, 8, 0, 9, 14, -9, 14), poly('gunS', 1, 0, 8, 0, 9, 14, 1, 14),
+    poly('steel', -5, 14, 5, 14, 5, 26, -5, 26), poly('steelS', 1, 14, 5, 14, 5, 26, 1, 26),
+    R(-6.5, 24, 13, 4, 'warn', 1), line('M-6 5 L6 5 M-6 9 L6 9')],
+  rail_lance_arm: () => [...pauldron(),
+    poly('sec', -7, 0, 7, 0, 7, 10, -7, 10),
+    poly('steel', -3.5, 10, 3.5, 10, 2.8, 34, -2.8, 34), poly('steelS', 0.6, 10, 3.5, 10, 2.8, 34, 0.6, 34),
+    ...[14, 20, 26].map((y) => R(-5, y, 10, 2.6, 'gun', 0.6)),
+    poly('beam', -1.6, 34, 1.6, 34, 0, 39)],
+  gatling_arm: () => [...pauldron(),
+    poly('gun', -9, 0, 9, 0, 9, 12, -9, 12),
+    C(0, 6, 4.5, 'steel'), C(0, 6, 1.6, 'gunS'),
+    ...[-5, 0, 5].map((x) => poly('steel', x - 1.8, 12, x + 1.8, 12, x + 1.8, 26, x - 1.8, 26)),
+    R(-7.5, 24, 15, 3.2, 'warn', 1)],
+  mortar_arm: () => [...pauldron(),
+    poly('arm', -8, 0, 8, 0, 9, 12, -9, 12), poly('armS', 1, 0, 8, 0, 9, 12, 1, 12),
+    poly('gun', -9, 12, 9, 12, 11, 25, -11, 25), C(0, 25, 7, 'gunS'), C(0, 25, 4, 'orange'),
+    line('M-8 17 L8 17')],
+  hammer_arm: () => [...pauldron(),
+    poly('arm', -7, 0, 7, 0, 8, 12, -8, 12), poly('armS', 1, 0, 7, 0, 8, 12, 1, 12),
+    poly('frm', -2.5, 12, 2.5, 12, 2.5, 18, -2.5, 18),
+    poly('steel', -15, 17, 15, 17, 15, 30, -15, 30), poly('steelS', 2, 17, 15, 17, 15, 30, 2, 30),
+    poly('warn', -15, 17, -9, 17, -15, 23), poly('red', -3, 21, 3, 21, 3, 26, -3, 26)],
+  drill_arm: () => [...pauldron(),
+    poly('arm', -8, 0, 8, 0, 9, 13, -9, 13), poly('armS', 1, 0, 8, 0, 9, 13, 1, 13),
+    poly('steel', -9, 13, 9, 13, 0, 36), poly('steelS', 0, 13, 9, 13, 0, 36),
+    P('M-6 19 L5 22 M-4 25 L3.5 27.5 M-2 30 L1.5 31.5', 'line')],
+  harpoon_arm: () => [...pauldron(),
+    poly('sec', -7, 0, 7, 0, 7, 14, -7, 14),
+    poly('gun', -3, 14, 3, 14, 3, 22, -3, 22),
+    poly('steel', -5, 22, 5, 22, 0, 32), P('M-5 22 L-8 18 M5 22 L8 18', 'line'),
+    P('M0 0 Q-10 8 -6 16', 'hiline')],
+  shield_arm: () => [...pauldron(),
+    poly('frm', -6, 0, 6, 0, 6, 12, -6, 12),
+    poly('sec', -13, 2, 12, 2, 13, 26, 0, 34, -13, 26), poly('secS', 0, 2, 12, 2, 13, 26, 0, 34),
+    poly('trim', -2, 6, 2, 6, 2, 26, -2, 26), poly('trim', -8, 13, 8, 13, 8, 16.5, -8, 16.5)],
+  blade_arm: () => [...pauldron(),
+    poly('arm', -6.5, 0, 6.5, 0, 7, 14, -7, 14), poly('armS', 1, 0, 6.5, 0, 7, 14, 1, 14),
+    poly('gun', -3, 14, 3, 14, 3, 19, -3, 19), R(-5, 18, 10, 2.6, 'trim', 0.6),
+    poly('beamP', -2.2, 21, 2.2, 21, 1.2, 40, -1.2, 40), P('M-0.4 22 L-0.2 37', 'hiline')],
+  // Heads
+  missile_crown: () => [
+    poly('gun', -11, -22, 11, -22, 11, -13, -11, -13),
+    ...[-7, 0, 7].map((x) => C(x, -17.5, 2.4, 'red')),
+    poly('arm', -9, -12, 9, -12, 11, -4, 10, 6, 6, 10, -6, 10, -10, 6, -11, -4),
+    poly('armS', 2, -12, 9, -12, 11, -4, 10, 6, 6, 10, 2, 10),
+    poly('frm', -7.5, -3.5, 7.5, -3.5, 6.5, 2.5, -6.5, 2.5), poly('eye', -6, -2, 6, -2, 5.5, 1.2, -5.5, 1.2),
+    poly('sec', -4, 4, 4, 4, 3, 9, -3, 9)],
+  sensor_head: () => [
+    poly('steel', -2, -12, 2, -12, 2, -18, -2, -18), P('M-10 -24 Q0 -16 10 -24', 'hiline'), C(0, -20, 4, 'sec'),
+    poly('arm', -10, -12, 10, -12, 12, -4, 10, 7, 6, 10, -6, 10, -10, 7, -12, -4),
+    poly('armS', 2, -12, 10, -12, 12, -4, 10, 7, 6, 10, 2, 10),
+    poly('frm', -10, -5, 10, -5, 9, 3, -9, 3), poly('glass', -8.5, -4, 8.5, -4, 7.5, 2, -7.5, 2),
+    C(-3, -1, 1.6, 'eye'), C(3, -1, 1.6, 'eye')],
+  aegis_head: () => [
+    P('M-16 -10 Q0 -30 16 -10', 'hiline'), C(0, -16, 5, 'mint'), C(0, -16, 2, 'white'),
+    P('M-11.5 -5 Q-11.5 -13.5 0 -14.5 Q11.5 -13.5 11.5 -5 L12.5 4.5 L8 9.5 L-8 9.5 L-12.5 4.5 Z', 'arm'),
+    P('M2 -14.3 Q11.5 -13.5 11.5 -5 L12.5 4.5 L8 9.5 L2 9.5 Z', 'armS'),
+    poly('frm', -10.5, -4.5, 10.5, -4.5, 10.5, 1, -10.5, 1), poly('mint', -8, -3.2, 8, -3.2, 8, -0.4, -8, -0.4),
+    poly('sec', -8, 3, 8, 3, 6, 9.5, -6, 9.5)],
+  emp_head: () => [
+    ...[-8, 0, 8].map((x, i) => poly('trim', x - 1.6, -12, x + 1.6, -12, x, i === 1 ? -26 : -20)),
+    poly('arm', 0, -12.5, 9, -6, 8, 4, 4, 9.5, -4, 9.5, -8, 4, -9, -6),
+    poly('armS', 0, -12.5, 9, -6, 8, 4, 4, 9.5, 0, 9.5),
+    poly('frm', -7.2, -2.4, 7.2, -2.4, 5.2, 2.2, -5.2, 2.2), poly('glass', -6, -1.4, 6, -1.4, 4.4, 1.2, -4.4, 1.2),
+    poly('sec', -2.8, 5, 2.8, 5, 2, 9.5, -2, 9.5)],
+};
+function legsWith(base, extra) { return () => [...base(), ...extra()]; }
+Object.assign(PART_ART, {
+  thruster_legs: legsWith(() => legPair({ w: 7, foot: 10, knee: 'sec', thighW: 5.5, stance: 9.5 }), () => [
+    ...[-1, 1].flatMap((s) => [poly('gun', s * 9.5 - 4, 8, s * 9.5 + 4, 8, s * 9.5 + 5, 14, s * 9.5 - 5, 14), poly('orange', s * 9.5 - 3.5, 24, s * 9.5 + 3.5, 24, s * 9.5, 31)])]),
+  tread_legs: () => [poly('frm', -9, -25, 9, -25, 10, -19, -10, -19),
+    ...[-1, 1].flatMap((s) => { const x = s * 10; return [poly('frm', x - 5, -20, x + 5, -20, x + 4, -6, x - 4, -6),
+      P(`M${x - 8} 0 Q${x - 8} -6 ${x} -6 Q${x + 8} -6 ${x + 8} 0 L${x + 8} 18 Q${x + 8} 24 ${x} 24 Q${x - 8} 24 ${x - 8} 18 Z`, 'gun'),
+      ...[2, 9, 16].map((y) => R(x - 6.5, y - 1.5, 13, 3, 'gunS', 0.6)), poly('sec', x - 6, -4, x + 6, -4, x + 6, -1, x - 6, -1)]; })],
+  hover_legs: legsWith(() => legPair({ w: 6.5, foot: 9, knee: 'sec', thighW: 5, stance: 9 }), () => [
+    ...[-1, 1].map((s) => P(`M${s * 9 - 11} 25 Q${s * 9} 30 ${s * 9 + 11} 25`, 'hiline')), C(-9, 26, 2.6, 'glass'), C(9, 26, 2.6, 'glass')]),
+  phase_legs: legsWith(() => legPair({ w: 5.5, foot: 8.5, knee: 'sec', thighW: 4.5, stance: 7.5 }), () => [
+    ...[-1, 1].map((s) => poly('beamP', s * 7.5 + s * 6, -6, s * 7.5 + s * 14, -12, s * 7.5 + s * 12, 4, s * 7.5 + s * 6, 6))]),
+  anchor_legs: legsWith(() => legPair({ w: 9, foot: 13, knee: 'trim', thighW: 7, stance: 11 }), () => [
+    ...[-1, 1].flatMap((s) => [poly('steel', s * 11 - 4, 23, s * 11 + 4, 23, s * 11, 30)])]),
+});
+
+function partShapesFor(frame, k, partId) {
+  if (partId && PART_ART[partId]) return PART_ART[partId]();
+  return partShapes(frame, k);
+}
+
 // UI-only icons (tool buttons).
 const UI_ICONS = { surge: ITEMS.adrenal_surge, clock: ITEMS.rush_order };
 
-function itemPalette(id) {
+function itemPalette(id, frame) {
+  if (frame) return PAL[frame];
   const c = id && CARDS[id];
   return c && c.frame ? PAL[c.frame] : PAL.longshot;
 }
@@ -511,10 +647,15 @@ function fitted(shapes, pad = 6) {
   return `${(b.cx - size / 2).toFixed(1)} ${(b.cy - size / 2).toFixed(1)} ${size.toFixed(1)} ${size.toFixed(1)}`;
 }
 
-// A card as a compact sticker.
-export function cardSticker(id) {
-  const shapes = (ITEMS[id] || ITEMS.scavenge)();
-  return `<svg class="icon item" viewBox="${fitted(shapes)}" aria-hidden="true">${sticker(shapes, itemPalette(id))}</svg>`;
+function shapesForCard(id) {
+  if (PART_ART[id]) return PART_ART[id]();
+  return (ITEMS[ITEM_ALIAS[id] || id] || ITEMS.scavenge)();
+}
+
+// A card as a compact sticker. Parts show the full replacement limb, in the owner's colors.
+export function cardSticker(id, frame = null) {
+  const shapes = shapesForCard(id);
+  return `<svg class="icon item ${PART_ART[id] ? 'part' : ''}" viewBox="${fitted(shapes)}" aria-hidden="true">${sticker(shapes, itemPalette(id, frame))}</svg>`;
 }
 export const cardIcon = cardSticker;
 export const upgradeSticker = cardSticker;
@@ -524,23 +665,17 @@ export function iconSVG(name, cls = '') {
   return `<svg class="icon ${cls}" viewBox="${fitted(shapes, 5)}" aria-hidden="true">${sticker(shapes, PAL.longshot)}</svg>`;
 }
 
-// Where an attachment sticker goes on a limb, in the 200-box.
-function attachPoint(frame, k) {
+// Where mod stickers stick onto a limb, in the 200-box. Up to two per limb.
+function modPoint(frame, k, i) {
   const [x, y, , , dir] = slotOf(frame, k);
-  if (k === 'head') return [x + 20 * dir, y - 4, 0.8];
-  if (k === 'legs') return [x, y + 4, 0.95];
-  return [x + 4 * dir, y + 30, 0.95];
-}
-function platePoint(frame, k) {
-  const [x, y, , , dir] = slotOf(frame, k);
-  if (k === 'head') return [x - 16 * dir, y + 6, 0.55];
-  if (k === 'legs') return [x - 24, y - 16, 0.7];
-  return [x - 10 * dir, y - 22, 0.7];
+  if (k === 'head') return [x + (i ? -16 : 16) * dir, y + 2, 0.5];
+  if (k === 'legs') return [x + (i ? 22 : -22), y - 12, 0.62];
+  return [x + (i ? 8 : -9) * dir, y + (i ? 18 : -20), 0.6];
 }
 
-function itemAt(id, x, y, s, extra = '', flipX = false) {
-  const shapes = (ITEMS[id] || ITEMS.scavenge)();
-  return `<g transform="translate(${x} ${y}) scale(${flipX ? -s : s} ${s})" ${extra}>${sticker(shapes, itemPalette(id))}</g>`;
+function itemAt(id, x, y, s, extra = '', flipX = false, frame = null) {
+  const shapes = shapesForCard(id);
+  return `<g transform="translate(${x} ${y}) scale(${flipX ? -s : s} ${s})"><g ${extra}>${sticker(shapes, itemPalette(id, frame))}</g></g>`;
 }
 
 function countdownBadge(x, y, n) {
@@ -551,8 +686,8 @@ function countdownBadge(x, y, n) {
 // ---------------------------------------------------------------- the mech
 
 // player: a game player object (or null for a showcase render)
-// opts.slap = limb whose newest upgrade just landed; opts.peel = limb just destroyed
-// opts.pending = this player's Workshop builds aimed at limbs (ghost sticker + countdown)
+// opts.slap = limb that just got a new part or mod; opts.peel = limb just destroyed
+// opts.pending = this player's Workshop parts in progress (ghost sticker + countdown)
 export function mechSVG(frameId, player = null, opts = {}) {
   const pal = PAL[frameId];
   const f = FRAMES[frameId];
@@ -562,15 +697,13 @@ export function mechSVG(frameId, player = null, opts = {}) {
   const rim = mix(pal.sec, '#2B2858', 0.72);
 
   for (const k of order) {
-    const shapes = partShapes(frameId, k);
+    const base = partShapes(frameId, k);
     const [x, y, s, kk, dir] = slotOf(frameId, k);
     const ls = player && k !== 'torso' ? player.limbs[k] : null;
     const destroyed = ls && !ls.alive;
     const loose = ls && ls.alive && ls.hp <= ls.max / 2;
     const place = `translate(${x} ${y}) scale(${s * dir} ${s})`;
-    const solid = solidOf(shapes);
-
-    // The silhouette slot doubles as the tap / drop target for this part.
+    const solid = solidOf(base);
     const cls = k === 'torso' ? 'part torso' : `part limb ${destroyed ? 'destroyed' : ''} ${loose ? 'loose' : ''}`;
     sil += `<g class="${cls}" data-limb="${k}">
       <g transform="${place}" class="slot-shape ${destroyed ? 'empty' : ''}">
@@ -578,17 +711,21 @@ export function mechSVG(frameId, player = null, opts = {}) {
         <g fill="#1B1938" stroke="#1B1938" stroke-width="${(1.4 / s).toFixed(2)}" stroke-linejoin="round">${solid}</g>
         ${destroyed ? `<g fill="none" stroke="#E5484D" stroke-opacity=".55" stroke-width="${(1.2 / s).toFixed(2)}" stroke-dasharray="${(3 / s).toFixed(2)} ${(3 / s).toFixed(2)}">${solid}</g>` : ''}
       </g>`;
-
+    const myBuilds = pending.filter((p) => p.target === k);
     if (destroyed) {
       sil += `<g transform="translate(${x} ${y})"><circle r="6.5" fill="${INK}" stroke="#E5484D" stroke-width="1.4"/><path d="M-2.6 -2.6L2.6 2.6M2.6 -2.6L-2.6 2.6" stroke="#E5484D" stroke-width="1.8" stroke-linecap="round"/></g>`;
-      for (const w of pending.filter((p) => p.target === k)) sil += countdownBadge(x + 12, y - 10, w.timer);
+      for (const w of myBuilds) {
+        attach += `<g class="pending-up" opacity=".45" transform="translate(${x} ${y}) scale(${(s * kk * dir).toFixed(3)} ${(s * kk).toFixed(3)})">${sticker(partShapesFor(frameId, k, w.id), pal)}</g>`;
+        attach += countdownBadge(x + 14, y - 14, w.timer);
+      }
       sil += '</g>';
-      if (opts.peel === k) parts += `<g class="peel" style="transform-origin:${x}px ${y}px"><g transform="translate(${x} ${y}) scale(${s * kk * dir} ${s * kk})">${sticker(shapes, pal)}</g></g>`;
+      if (opts.peel === k) parts += `<g class="peel" style="transform-origin:${x}px ${y}px"><g transform="translate(${x} ${y}) scale(${s * kk * dir} ${s * kk})">${sticker(partShapesFor(frameId, k, opts.peelPart), pal)}</g></g>`;
       continue;
     }
     sil += '</g>';
 
-    // The part sticker, small inside its slot.
+    const partId = ls && ls.part ? ls.part.id : null;
+    const shapes = partShapesFor(frameId, k, partId);
     const tilt = loose ? ({ armL: -7, armR: 7, head: 6, legs: -3 }[k]) : 0;
     let inner = sticker(shapes, pal);
     if (loose) inner += `<g stroke="${INK}" stroke-width=".8" fill="none" stroke-linecap="round" opacity=".75"><path d="M-4 -6 L0 -1 L-2 2 L3 7"/><path d="M3 -7 L5 -4"/></g>`;
@@ -601,23 +738,17 @@ export function mechSVG(frameId, player = null, opts = {}) {
         <circle cx="0" cy="-4" r="5.6" fill="${INK}"/><circle cx="0" cy="-4" r="4.4" fill="#fff"/>
         <circle cx="0" cy="-4" r="4.4" fill="${glow}" class="core-glow"/><circle cx="-1.5" cy="-5.5" r="1.3" fill="#fff" opacity=".9"/></g>`;
     }
-    parts += `<g class="pstk" data-limb="${k}" transform="translate(${x} ${y}) scale(${(s * kk * dir).toFixed(3)} ${(s * kk).toFixed(3)})${tilt ? ` rotate(${tilt})` : ''}">${inner}</g>`;
+    const slapped = opts.slap === k && opts.slapKind === 'part';
+    parts += `<g class="pstk" data-limb="${k}" transform="translate(${x} ${y}) scale(${(s * kk * dir).toFixed(3)} ${(s * kk).toFixed(3)})${tilt ? ` rotate(${tilt})` : ''}"><g class="${slapped ? 'slap' : ''}">${inner}</g></g>`;
 
-    // Attachments: upgrade and plating stickers stuck onto the part sticker.
     if (ls) {
-      if (ls.plating) {
-        const [px, py, ps] = platePoint(frameId, k);
-        attach += itemAt(ls.plating.id, px, py, ps, `class="up ${opts.slap === k && opts.slapKind === 'plating' ? 'slap' : ''}"`);
-      }
-      if (ls.mount) {
-        const [ax, ay, as] = attachPoint(frameId, k);
-        attach += itemAt(ls.mount.id, ax, ay, as, `class="up ${opts.slap === k && opts.slapKind !== 'plating' ? 'slap' : ''}"`, dir < 0);
-      }
-      pending.filter((p) => p.target === k).forEach((w) => {
-        const c = CARDS[w.id];
-        const [ax, ay, as] = c.type === 'plating' ? platePoint(frameId, k) : attachPoint(frameId, k);
-        if (c.type === 'weapon' || c.type === 'boost' || c.type === 'plating') attach += `<g class="pending-up" opacity=".45">${itemAt(w.id, ax, ay, as, '', dir < 0)}</g>`;
-        attach += countdownBadge(ax + 9, ay - 9, w.timer);
+      ls.mods.forEach((m, i) => {
+        const [mx2, my2, ms] = modPoint(frameId, k, i);
+        attach += itemAt(m.id, mx2, my2, ms, `class="up ${opts.slap === k && opts.slapKind === 'mod' && i === ls.mods.length - 1 ? 'slap' : ''}"`, dir < 0, frameId);
+      });
+      myBuilds.forEach((w) => {
+        attach += `<g class="pending-up" opacity=".42" transform="translate(${x + 6 * dir} ${y + 4}) scale(${(s * kk * 0.8 * dir).toFixed(3)} ${(s * kk * 0.8).toFixed(3)})">${sticker(partShapesFor(frameId, k, w.id), pal)}</g>`;
+        attach += countdownBadge(x + 14 * dir, y - 12, w.timer);
       });
     }
   }
@@ -630,12 +761,81 @@ export function mechSVG(frameId, player = null, opts = {}) {
     <g class="bob">${sil}${parts}${attach}</g>${drones}</svg>`;
 }
 
+// ---------------------------------------------------------------- board art
+
+// The board token: the mech's current head as a sticker on a colored base ring.
+export function tokenSVG(frameId, player, side) {
+  const pal = PAL[frameId];
+  const head = player && player.limbs.head.alive ? partShapesFor(frameId, 'head', player.limbs.head.part?.id) : HEADS[frameId]();
+  const ring = side === 'you' ? '#F2C230' : '#E5484D';
+  const dead = player && !player.limbs.head.alive;
+  return `<svg class="token-svg" viewBox="-24 -24 48 48" aria-hidden="true">
+    <ellipse cx="0" cy="17" rx="17" ry="5.5" fill="#05040F" opacity=".5"/>
+    <ellipse cx="0" cy="14" rx="18" ry="6.5" fill="${ring}" stroke="${INK}" stroke-width="1.6"/>
+    <ellipse cx="0" cy="13" rx="13" ry="4" fill="${INK}" opacity=".35"/>
+    <g transform="translate(0 -2) scale(0.95)" ${dead ? 'opacity=".55"' : ''}>${sticker(head, pal)}</g>
+    ${dead ? `<g transform="translate(9 -12)"><circle r="5" fill="${INK}" stroke="#E5484D" stroke-width="1.2"/><path d="M-2 -2L2 2M2 -2L-2 2" stroke="#E5484D" stroke-width="1.6" stroke-linecap="round"/></g>` : ''}
+  </svg>`;
+}
+
+const TREE = (x, y, s) => [poly('frmS', x - 1.2 * s, y + 2 * s, x + 1.2 * s, y + 2 * s, x + 1.2 * s, y + 4.5 * s, x - 1.2 * s, y + 4.5 * s),
+  poly('pine', x, y - 6 * s, x + 4.5 * s, y + 2.2 * s, x - 4.5 * s, y + 2.2 * s), poly('pineS', x, y - 6 * s, x + 4.5 * s, y + 2.2 * s, x, y + 2.2 * s)];
+const TERRAIN_PAL = { pine: '#3E8E5E', pineS: '#2C6A45', rock: '#8C8278', rockS: '#6B625A', snow: '#E9ECF2', bld: '#59607C', bldS: '#41475F', win: '#F2C230', winOff: '#2A2E44', rub: '#6E6A66', rubS: '#524E4B', wallC: '#3DDC97', frmS: '#3A2E26', arm: '#59607C' };
+
+function terrainShapes(t, hp, max) {
+  switch (t) {
+    case 'forest': return [...TREE(-6, -1, 1.2), ...TREE(6, -4, 1.35), ...TREE(1, 5, 1.05)];
+    case 'mountain': return [poly('rock', -15, 12, -4, -12, 3, -2, 8, -9, 16, 12), poly('rockS', 3, -2, 8, -9, 16, 12, 2, 12),
+      poly('snow', -4, -12, -8, -4, -4, -6, -1, -6)];
+    case 'building': {
+      const dmg = max ? 1 - hp / max : 0;
+      const wins = [];
+      for (let r = 0; r < 3; r++) for (let c = 0; c < 2; c++) wins.push(R(-7 + c * 8, -9 + r * 7, 5, 4, (r + c + Math.round(dmg * 3)) % 3 ? 'win' : 'winOff', 0.6));
+      return [poly('bld', -11, -14, 11, -14, 11, 14, -11, 14), poly('bldS', 3, -14, 11, -14, 11, 14, 3, 14), poly('frmS', -13, -16, 13, -16, 13, -13, -13, -13), ...wins,
+        ...(dmg > 0.3 ? [line('M-6 -14 L-2 -6 L-5 0 L0 8')] : [])];
+    }
+    case 'rubble': return [poly('rub', -13, 9, -9, 1, -2, 4, 0, 10), poly('rubS', -1, 10, 3, 0, 9, 2, 13, 10), poly('rub', -5, 3, -1, -5, 5, -1, 3, 4)];
+    case 'wall': return [poly('wallC', -13, -10, 13, -10, 13, 10, -13, 10), poly('hi', -11, -8, 2, -8, 0, -4, -11, -3), line('M-13 0 L13 0')];
+    default: return [];
+  }
+}
+
+// One board tile's art (background handled by CSS). hp shown as small pips for destructible terrain.
+export function tileSVG(t, hp) {
+  const T = { forest: 3, rubble: 3, building: 6, mountain: 12, wall: 6 };
+  const shapes = terrainShapes(t, hp, T[t]);
+  if (!shapes.length) return '';
+  const pal = { ...PAL.longshot, ...TERRAIN_PAL };
+  return `<svg class="tile-svg" viewBox="-20 -20 40 40" aria-hidden="true">${sticker(shapes, pal)}</svg>`;
+}
+
+// ---------------------------------------------------------------- pilots
+
+const PILOT_ART = {
+  redline: { helm: '#E5484D', visor: '#FFE45C', stripe: '#F2C230' },
+  okafor: { helm: '#3D6ED6', visor: '#7DF9FF', stripe: '#E7EAF1' },
+  gus: { helm: '#E39A2E', visor: '#C8FFE9', stripe: '#3B4058' },
+  kai: { helm: '#433C68', visor: '#FF8CF2', stripe: '#9B7BFF' },
+};
+export function pilotSVG(id) {
+  const a = PILOT_ART[id];
+  const pal = { ...PAL.longshot, helm: a.helm, helmS: shade(a.helm, -0.28), visor: a.visor, stripe: a.stripe, skin: '#E8B894' };
+  const shapes = [
+    poly('frm', -10, 10, 10, 10, 13, 18, -13, 18),
+    P('M-11 2 Q-12 -13 0 -14 Q12 -13 11 2 L9 9 L-9 9 Z', 'helm'),
+    P('M2 -13.8 Q12 -13 11 2 L9 9 L2 9 Z', 'helmS'),
+    poly('stripe', -1.8, -14, 1.8, -14, 1.8, -5, -1.8, -5),
+    P('M-8.5 -4 L8.5 -4 L7.5 4 Q0 7 -7.5 4 Z', 'visor'),
+    P('M-7 -2.6 L-1 -2.6 L-1.6 0 L-6.6 0 Z', 'hi'),
+    poly('frm', -12.5, -1, -10, -1, -10, 5, -12.5, 5),
+  ];
+  return `<svg class="pilot-svg" viewBox="${fitted(shapes, 5)}" aria-hidden="true">${sticker(shapes, pal)}</svg>`;
+}
+
 // ---------------------------------------------------------------- misc UI art
 
-export const TYPE_COLORS = {
-  weapon: '#E5484D', boost: '#F2C230', plating: '#8C95AA', support: '#3DDC97', order: '#9B7BFF',
-};
-export const TYPE_NAMES = { weapon: 'Weapon', boost: 'Upgrade', plating: 'Plating', support: 'Support', order: 'Order' };
+export const TYPE_COLORS = { part: '#E5484D', mod: '#F2C230', tactic: '#3DDC97' };
+export const TYPE_NAMES = { part: 'Part', mod: 'Mod', tactic: 'Tactic' };
 
 export function logoSVG() {
   const t = (y, txt, fill, stroke, w, extra = '') => `<text x="180" y="${y}" font-size="72" letter-spacing="6" fill="${fill}" stroke="${stroke}" stroke-width="${w}" ${extra}>${txt}</text>`;
