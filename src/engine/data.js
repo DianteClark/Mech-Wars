@@ -146,10 +146,10 @@ export const PILOT_ORDER = ['redline', 'okafor', 'gus', 'kai'];
 
 // mod = stat steps applied when a build completes
 export const DOCTRINES = {
-  standard: { name: 'Standard', short: 'Std', text: 'Normal build times and quality.', time: 0, mod: 0 },
+  standard: { name: 'Standard', short: 'Standard', text: 'Normal build times and quality.', time: 0, mod: 0 },
   rush: { name: 'Rush Crew', short: 'Rush', text: 'Builds finish 1 turn sooner (min 2) but come out 1 step weaker.', time: -1, mod: -1 },
   master: { name: 'Master Crafters', short: 'Master', text: 'Builds take 1 turn longer but come out 1 step stronger.', time: 1, mod: 1 },
-  firepower: { name: 'Specialists: Firepower', short: 'Fire', text: 'Weapons and strike boosts come out 1 step stronger.', time: 0, mod: 0, focus: 'fire' },
+  firepower: { name: 'Specialists: Firepower', short: 'Firepower', text: 'Weapons and strike boosts come out 1 step stronger.', time: 0, mod: 0, focus: 'fire' },
   armor: { name: 'Specialists: Armor', short: 'Armor', text: 'Plating, repairs and drones come out 1 step stronger.', time: 0, mod: 0, focus: 'armor' },
 };
 export const DOCTRINE_ORDER = ['standard', 'rush', 'master', 'firepower', 'armor'];

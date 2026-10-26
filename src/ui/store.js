@@ -12,6 +12,8 @@ const DEFAULT = {
   run: null,            // run in progress (includes mid-battle state)
   seenManual: false,
   stats: { wins: 0, losses: 0 },
+  settings: { hints: true, speed: 'normal', haptics: true, motion: 'system' },
+  seenTips: [],
 };
 
 let cache = null;
@@ -21,6 +23,9 @@ export function load() {
   try {
     const raw = localStorage.getItem(KEY);
     cache = raw ? { ...structuredClone(DEFAULT), ...JSON.parse(raw) } : structuredClone(DEFAULT);
+    // Older saves may be missing newer nested settings.
+    cache.settings = { ...DEFAULT.settings, ...(cache.settings || {}) };
+    cache.stats = { ...DEFAULT.stats, ...(cache.stats || {}) };
   } catch {
     cache = structuredClone(DEFAULT);
   }
@@ -40,7 +45,9 @@ export function update(fn) {
   save();
 }
 
+// Wipes everything: progress, unlocks, leaderboard, settings and any run in progress.
 export function resetAll() {
+  try { localStorage.removeItem(KEY); } catch { /* ignore */ }
   cache = structuredClone(DEFAULT);
   save();
 }

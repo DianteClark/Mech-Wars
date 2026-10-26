@@ -115,7 +115,7 @@ function toneFill(tone, pal) {
     case 'dark': return pal.dark;
     case 'light': return pal.light;
     case 'accent': return pal.accent;
-    case 'visor': return '#9FF3FF';
+    case 'visor': return pal.glow || '#9FF3FF';
     case 'ink': return INK;
     case 'line': return 'none';
     default: return pal.main;
@@ -132,6 +132,7 @@ function drawShapes(shapes, pal, pass) {
     if (tone === 'shine') return `<${tag} ${attrs(a)} fill="#fff" fill-opacity=".38"/>`;
     if (tone === 'shineline') return `<${tag} ${attrs(a)} fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="3.5" stroke-linecap="round"/>`;
     if (tone === 'ink') return `<${tag} ${attrs(a)} fill="${INK}"/>`;
+    if (tone === 'visor') return `<${tag} ${attrs(a)} fill="${pal.glow || '#9FF3FF'}" stroke="${INK}" stroke-width="3.5" stroke-linejoin="round" class="visor"/>`;
     return `<${tag} ${attrs(a)} fill="${toneFill(tone, pal)}" stroke="${INK}" stroke-width="3.5" stroke-linejoin="round"/>`;
   }).join('');
 }
@@ -174,49 +175,94 @@ function crackArt(limb, body) {
   return `<path d="M${x - 8} ${y - 8} L${x - 1} ${y - 1} L${x - 5} ${y + 3} L${x + 7} ${y + 10}" fill="none" stroke="${INK}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`;
 }
 
+// Visor glow and torso emblem per Frame.
+const GLOW = { brakka: '#FFE45C', longshot: '#7DF9FF', bastion: '#C8FFE9', specter: '#FF8CF2' };
+const EMBLEM = {
+  brakka: (x, y) => `<g transform="translate(${x} ${y})"><rect x="-8" y="-5" width="16" height="10" rx="3" fill="#fff"/><path d="M-3 -5V2M2 -5V2" stroke="${INK}" stroke-width="1.6"/></g>`,
+  longshot: (x, y) => `<g transform="translate(${x} ${y})" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><circle r="5.5"/><path d="M0 -9V-3M0 3V9M-9 0H-3M3 0H9"/></g>`,
+  bastion: (x, y) => `<g transform="translate(${x} ${y})"><path d="M-7 -7H7V0Q7 6 0 8Q-7 6 -7 0Z" fill="#fff"/></g>`,
+  specter: (x, y) => `<g transform="translate(${x} ${y})"><path d="M-8 0Q0 -7 8 0Q0 7 -8 0Z" fill="#fff"/><circle r="2.4" fill="${INK}"/></g>`,
+};
+const EMBLEM_POS = { brakka: [124, 80], longshot: [116, 74], bastion: [128, 82], specter: [100, 70] };
+let uidCounter = 0;
+const DECOR = ['line', 'shine', 'shineline', 'ink', 'visor'];
+
 // player: a game player object (or null for a clean showcase render)
 export function mechSVG(frameId, player = null, opts = {}) {
   const body = BODIES[frameId];
   const f = FRAMES[frameId];
-  const pal = { main: f.color, dark: shade(f.color, -0.28), light: shade(f.color, 0.45), accent: f.accent };
-  const dead = { main: '#7A86A8', dark: '#5D6888', light: '#A9B3CC', accent: '#8D97B5' };
+  const uid = `m${++uidCounter}`;
+  const pal = { main: f.color, dark: shade(f.color, -0.28), light: shade(f.color, 0.45), accent: f.accent, glow: GLOW[frameId] };
   const order = ['legs', 'torso', 'armL', 'armR', 'head'];
   const limbState = (k) => (player && k !== 'torso' ? player.limbs[k] : null);
 
-  let back = '', front = '', extras = '';
+  let back = '', front = '', clip = '', details = '';
   for (const k of order) {
     const ls = limbState(k);
     const destroyed = ls && !ls.alive;
     const shapes = body[k];
-    if (!destroyed) back += drawShapes(shapes, pal, 'back');
+    if (!destroyed) {
+      back += drawShapes(shapes, pal, 'back');
+      clip += shapes.filter(([, , t]) => !DECOR.includes(t)).map(([tag, a]) => `<${tag} ${attrs(a)}/>`).join('');
+    }
     const cls = k === 'torso' ? 'part torso' : `part limb ${destroyed ? 'destroyed' : ''}`;
     const drawn = destroyed
-      ? shapes.filter(([, , t]) => !['line', 'shine', 'shineline', 'ink', 'visor'].includes(t)).map(([tag, a]) => `<${tag} ${attrs(a)} fill="#5D6888" fill-opacity=".5" stroke="#fff" stroke-opacity=".7" stroke-width="2.5" stroke-dasharray="5 4" stroke-linejoin="round"/>`).join('')
+      ? shapes.filter(([, , t]) => !DECOR.includes(t)).map(([tag, a]) => `<${tag} ${attrs(a)} fill="#4C5778" fill-opacity=".45" stroke="#fff" stroke-opacity=".75" stroke-width="2.5" stroke-dasharray="5 4" stroke-linejoin="round"/>`).join('')
       : drawShapes(shapes, pal, 'front');
-    front += `<g class="${cls}" data-limb="${k}">${drawn}`;
+    front += `<g class="${cls}" data-limb="${k}">${drawn}</g>`;
+
+    // Details sit above the cel shading so they stay crisp.
+    let d = '';
     if (ls && ls.alive) {
-      if (ls.plating) front += platingArt(k, body);
-      if (ls.hp <= ls.max / 2) front += crackArt(k, body);
-      if (ls.mount) front += mountArt(ls.mount.id, ...body.mounts[k], k, pal);
+      if (ls.plating) d += platingArt(k, body);
+      if (ls.hp <= ls.max / 2) d += crackArt(k, body);
+      if (ls.mount) d += mountArt(ls.mount.id, ...body.mounts[k], k, pal);
+    }
+    if (destroyed) {
+      const [x, y] = body.mounts[k];
+      const cy = k === 'legs' ? y - 20 : k === 'head' ? y + 18 : 110;
+      d += `<g transform="translate(${x} ${cy})"><circle r="9" fill="${INK}"/><path d="M-4 -4L4 4M4 -4L-4 4" stroke="#FF4F64" stroke-width="3" stroke-linecap="round"/></g>`;
     }
     if (k === 'torso') {
+      const [ex, ey] = EMBLEM_POS[frameId];
+      d += EMBLEM[frameId](ex, ey);
       const [cx, cy, r] = body.core;
       const pct = player ? player.core / 20 : 1;
-      const glow = pct > 0.7 ? '#FFC929' : pct > 0.35 ? '#FF8A3D' : '#FF4F64';
-      front += `<g class="core-gem" data-limb="core"><circle cx="${cx}" cy="${cy}" r="${r + 4}" fill="${INK}"/><circle cx="${cx}" cy="${cy}" r="${r}" fill="#fff"/><circle cx="${cx}" cy="${cy}" r="${r}" fill="${glow}" class="core-glow"/><circle cx="${cx - r / 3}" cy="${cy - r / 3}" r="${r / 3.2}" fill="#fff" opacity=".8"/></g>`;
+      const glow = pct >= 0.75 ? '#FFC929' : pct >= 0.4 ? '#FF8A3D' : '#FF4F64';
+      const exposed = player && LIMB_KEYS.filter((x) => !player.limbs[x].alive).length >= 2;
+      d += `<g class="core-gem ${exposed ? 'exposed' : ''}" data-limb="core">
+        ${exposed ? `<circle cx="${cx}" cy="${cy}" r="${r + 9}" fill="none" stroke="#FF4F64" stroke-width="3" stroke-dasharray="4 4" class="core-ring"/>` : ''}
+        <circle cx="${cx}" cy="${cy}" r="${r + 4}" fill="${INK}"/><circle cx="${cx}" cy="${cy}" r="${r}" fill="#fff"/>
+        <circle cx="${cx}" cy="${cy}" r="${r}" fill="${glow}" class="core-glow"/>
+        <circle cx="${cx - r / 3}" cy="${cy - r / 3}" r="${r / 3.2}" fill="#fff" opacity=".85"/></g>`;
     }
-    front += '</g>';
+    if (d) details += `<g class="part-detail" data-limb="${k === 'torso' ? 'core' : k}">${d}</g>`;
   }
+
+  let drones = '';
   if (player && player.guard > 0) {
     for (let i = 0; i < player.guard; i++) {
-      const gx = 30 + i * 22, gy = 30;
-      extras += `<g class="drone" style="animation-delay:${i * -0.4}s" transform="translate(${gx} ${gy})"><circle r="9" fill="#fff" stroke="#fff" stroke-width="8"/><circle r="9" fill="#39E3A6" stroke="${INK}" stroke-width="3"/><path d="M-4 0 L4 0" stroke="${INK}" stroke-width="3" stroke-linecap="round"/></g>`;
+      const gx = 22 + i * 22, gy = 22;
+      drones += `<g transform="translate(${gx} ${gy})"><g class="drone" style="animation-delay:${i * -0.4}s"><circle r="9" fill="#fff" stroke="#fff" stroke-width="8"/><circle r="9" fill="#39E3A6" stroke="${INK}" stroke-width="3"/><path d="M-4 0 L4 0" stroke="${INK}" stroke-width="3" stroke-linecap="round"/></g></g>`;
     }
   }
-  const flip = opts.flip ? 'transform="translate(200 0) scale(-1 1)"' : '';
   return `<svg class="mech-svg" viewBox="0 0 200 200" role="img" aria-label="${f.name}">
-    <g ${flip}><g class="sticker-back">${back}</g><g class="sticker-front">${front}</g></g>${extras}</svg>`;
+    <defs>
+      <clipPath id="c${uid}">${clip}</clipPath>
+      <linearGradient id="g${uid}" x1="0" x2="1" y1="0" y2="0.25">
+        <stop offset="0.6" stop-color="${INK}" stop-opacity="0"/><stop offset="0.6" stop-color="${INK}" stop-opacity=".2"/>
+      </linearGradient>
+    </defs>
+    <ellipse cx="100" cy="193" rx="62" ry="6" fill="#08123F" opacity=".38"/>
+    <g class="bob">
+      <g class="sticker-back">${back}</g>
+      <g class="sticker-front">${front}</g>
+      <rect x="0" y="0" width="200" height="200" fill="url(#g${uid})" clip-path="url(#c${uid})" pointer-events="none"/>
+      ${details}
+    </g>${drones}</svg>`;
 }
+
+const LIMB_KEYS = ['head', 'armL', 'armR', 'legs'];
 
 // Where a limb's HP chip sits, as % of the mech box.
 export function chipPos(frameId, limb) {
@@ -226,7 +272,7 @@ export function chipPos(frameId, limb) {
     armL: [Math.max(12, b.mounts.armL[0] - 18), 100],
     armR: [Math.min(188, b.mounts.armR[0] + 18), 100],
     legs: [100, 194],
-    core: [b.core[0], b.core[1] + b.core[2] + 14],
+    core: [b.core[0], b.core[1] + b.core[2] + 17],
   }[limb];
   return [pos[0] / 2, pos[1] / 2];
 }
@@ -298,4 +344,15 @@ export function logoSVG() {
       <text x="180" y="72" fill="#FFC929" stroke="${INK}" stroke-width="7">MECH</text>
       <text x="180" y="138" fill="#FF4F64" stroke="${INK}" stroke-width="7">WARS</text>
     </g></svg>`;
+}
+
+// Tiny glyphs for limb labels.
+const LIMB_GLYPH = {
+  head: '<rect x="3" y="3.5" width="10" height="9" rx="2.5" fill="#fff" stroke="#121633" stroke-width="1.6"/><rect x="5" y="6.5" width="6" height="2.4" rx="1.2" fill="#121633"/>',
+  armL: '<rect x="4.5" y="2" width="7" height="8" rx="2.5" fill="#fff" stroke="#121633" stroke-width="1.6"/><rect x="3.5" y="9" width="9" height="5.5" rx="2" fill="#fff" stroke="#121633" stroke-width="1.6"/>',
+  legs: '<rect x="3" y="2" width="4" height="9" rx="1.5" fill="#fff" stroke="#121633" stroke-width="1.6"/><rect x="9" y="2" width="4" height="9" rx="1.5" fill="#fff" stroke="#121633" stroke-width="1.6"/><path d="M2 14h6M8 14h6" stroke="#121633" stroke-width="2.4" stroke-linecap="round"/>',
+};
+LIMB_GLYPH.armR = LIMB_GLYPH.armL;
+export function limbGlyph(k) {
+  return `<svg class="lg" viewBox="0 0 16 16" aria-hidden="true">${LIMB_GLYPH[k]}</svg>`;
 }
