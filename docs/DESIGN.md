@@ -105,6 +105,10 @@ The crew is mostly **flavor/explanation** for where parts come from — not unit
 - Gives players time to learn each Frame and develop strategy, without needing online lobbies.
 - **Every battle starts fresh**: no damage or parts carry over. The run is a streak of standalone fights.
 - Difficulty climbs through stronger/rarer enemy Frames, smarter AI, and harsher twists, not stat-inflated enemies.
+- **Two modes:**
+  - **Ranked Tower:** one loss ends the run; results go on the global leaderboard.
+  - **Casual Tower:** unlimited retries for learning a Frame; no leaderboard.
+- **Global leaderboard** (overall + per Frame) needs a backend for accounts and storage (e.g. Supabase or Firebase). Ranked runs should be verified by replaying the run's seed + action log, since the game runs in the browser. Plan: local-only leaderboard in the prototype, online later.
 
 ### PvP (later)
 
