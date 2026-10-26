@@ -287,10 +287,48 @@ function scuffs(limb, body) {
     <path d="M${x - 6} ${y - 5} L${x + 1} ${y + 1} L${x - 2} ${y + 4} L${x + 6} ${y + 9}"/><path d="M${x + 4} ${y - 6} L${x + 8} ${y - 2}"/></g>`;
 }
 
+// Bounding box of a part's solid shapes (paths use absolute coordinates).
+function bbox(shapes) {
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  const add = (x, y) => { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); };
+  for (const [tag, a, tone] of shapes) {
+    if (DECOR.includes(tone)) continue;
+    if (tag === 'circle') { add(a.cx - a.r, a.cy - a.r); add(a.cx + a.r, a.cy + a.r); continue; }
+    const n = (a.d.match(/-?\d+(\.\d+)?/g) || []).map(Number);
+    for (let i = 0; i + 1 < n.length; i += 2) add(n[i], n[i + 1]);
+  }
+  return { x0, y0, x1, y1, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
+}
+
+// "Exploded" placement: each part sticker shrinks a little and drifts away from the body
+// center, so parts read as separate stickers sitting inside the mech's silhouette.
+const GAP_SCALE = 0.82;
+const DRIFT = 0.12;
+function partTransform(shapes) {
+  const b = bbox(shapes);
+  const dx = (b.cx - 100) * DRIFT, dy = (b.cy - 105) * DRIFT;
+  return { str: `translate(${(b.cx + dx).toFixed(1)} ${(b.cy + dy).toFixed(1)}) scale(${GAP_SCALE}) translate(${-b.cx.toFixed(1)} ${-b.cy.toFixed(1)})`, b };
+}
+
+function silhouette(body) {
+  const solid = ['legs', 'torso', 'armL', 'armR', 'head'].flatMap((k) => body[k].filter(([, , t]) => !DECOR.includes(t)));
+  const shapes = solid.map(([tag, a]) => `<${tag} ${attrs(a)}/>`).join('');
+  return `<g class="silhouette" pointer-events="none">
+    <g fill="#3E3A78" stroke="#3E3A78" stroke-width="15" stroke-linejoin="round">${shapes}</g>
+    <g fill="#1A1838" stroke="#1A1838" stroke-width="11" stroke-linejoin="round">${shapes}</g>
+    <g fill="none" stroke="#2C2958" stroke-width="1.5" stroke-dasharray="3 4">${shapes}</g></g>`;
+}
+
+function countdownBadge(x, y, n) {
+  return `<g class="cd-badge" transform="translate(${x} ${y})"><circle r="15" fill="${INK}"/><circle r="12.5" fill="#fff"/>
+    <circle r="10" fill="#FFC929" stroke="${INK}" stroke-width="1.8"/><text y="5" text-anchor="middle" font-family="Oxanium, sans-serif" font-weight="800" font-size="14" fill="${INK}">${n}</text></g>`;
+}
+
 let uidCounter = 0;
 
 // player: a game player object (or null for a clean showcase render)
 // opts.slap = limb whose newest upgrade just landed; opts.peel = limb that was just destroyed
+// opts.pending = this player's Workshop builds aimed at limbs (shown as ghost stickers + countdown)
 export function mechSVG(frameId, player = null, opts = {}) {
   const body = BODIES[frameId];
   const f = FRAMES[frameId];
@@ -299,27 +337,29 @@ export function mechSVG(frameId, player = null, opts = {}) {
   const order = ['legs', 'torso', 'armL', 'armR', 'head'];
   let out = '';
   let clipDefs = '';
+  const pending = opts.pending || [];
 
   for (const k of order) {
     const ls = player && k !== 'torso' ? player.limbs[k] : null;
     const destroyed = ls && !ls.alive;
     const isLimb = k !== 'torso';
-    const [px, py] = body.pivot[k] || [100, 100];
+    const { str: place, b } = partTransform(body[k]);
     const loose = ls && ls.alive && ls.hp <= ls.max / 2;
-    const tilt = loose ? ({ armL: -5, armR: 5, head: 4, legs: -2 }[k]) : 0;
-    const tf = tilt ? `transform="rotate(${tilt} ${px} ${py})"` : '';
+    const tilt = loose ? ({ armL: -6, armR: 6, head: 5, legs: -3 }[k]) : 0;
+    const tf = `transform="${place}${tilt ? ` rotate(${tilt} ${b.cx} ${b.cy})` : ''}"`;
     const partCls = isLimb ? `part limb ${destroyed ? 'destroyed' : ''} ${loose ? 'loose' : ''}` : 'part torso';
+    const myBuilds = pending.filter((w) => w.target === k);
 
     if (destroyed) {
-      out += `<g class="${partCls}" data-limb="${k}">${sticker(body[k], pal, { ghost: true })}`;
-      const [x, y] = body.mounts[k];
-      const cy = k === 'legs' ? y - 22 : k === 'head' ? y + 14 : 112;
-      out += `<g transform="translate(${x} ${cy})"><circle r="8" fill="${INK}"/><path d="M-3.5 -3.5L3.5 3.5M3.5 -3.5L-3.5 3.5" stroke="#FF4F64" stroke-width="2.6" stroke-linecap="round"/></g></g>`;
-      if (opts.peel === k) out += `<g class="peel" style="transform-origin:${px}px ${py}px">${sticker(body[k], pal)}</g>`;
+      // Empty slot in the silhouette: a faint outline you can drop a Rebuild Kit on.
+      const slot = body[k].filter(([, , t]) => !DECOR.includes(t)).map(([tag, a]) => `<${tag} ${attrs(a)}/>`).join('');
+      out += `<g class="${partCls}" data-limb="${k}" ${tf}><g class="empty-slot" fill="#1A1838" stroke="#4E4988" stroke-width="2" stroke-dasharray="5 4" stroke-linejoin="round">${slot}</g>`;
+      for (const w of myBuilds) out += countdownBadge(b.cx, b.cy, w.timer);
+      out += '</g>';
+      if (opts.peel === k) out += `<g class="peel" style="transform-origin:${b.cx}px ${b.cy}px"><g ${tf}>${sticker(body[k], pal)}</g></g>`;
       continue;
     }
 
-    // Cel shade per part: a hard-edged dark band clipped to the part's shape.
     const clipId = `c${uid}${k}`;
     clipDefs += `<clipPath id="${clipId}">${body[k].filter(([, , t]) => !DECOR.includes(t)).map(([tag, a]) => `<${tag} ${attrs(a)}/>`).join('')}</clipPath>`;
     let inner = sticker(body[k], pal, { cls: 'part-stk' });
@@ -332,6 +372,17 @@ export function mechSVG(frameId, player = null, opts = {}) {
         const [mxp, myp] = body.mounts[k];
         inner += sticker(mountShapes(ls.mount.id, k), pal, { cls: `up mount ${opts.slap === k && opts.slapKind !== 'plating' ? 'slap' : ''}`, attrsStr: `transform="translate(${mxp} ${myp})"` });
       }
+      // Builds in progress for this limb: ghost of the incoming sticker + countdown.
+      myBuilds.forEach((w, i) => {
+        const c = CARDS[w.id];
+        const [mxp, myp] = body.mounts[k];
+        if (c.type === 'weapon' || c.type === 'boost') {
+          inner += `<g class="pending-up" opacity=".5">${sticker(mountShapes(w.id, k), pal, { attrsStr: `transform="translate(${mxp} ${myp})"` })}</g>`;
+        } else if (c.type === 'plating') {
+          inner += `<g class="pending-up" opacity=".5">${sticker(platingShapes(k, body), pal)}</g>`;
+        }
+        inner += countdownBadge(b.cx + (i ? 14 : 0), b.cy, w.timer);
+      });
     }
     if (k === 'torso') {
       const [cx, cy, r] = body.core;
@@ -360,8 +411,12 @@ export function mechSVG(frameId, player = null, opts = {}) {
         <stop offset="0.62" stop-color="${INK}" stop-opacity="0"/><stop offset="0.62" stop-color="${INK}" stop-opacity=".18"/>
       </linearGradient>
     </defs>
-    <ellipse cx="100" cy="193" rx="56" ry="5" fill="#08123F" opacity=".35"/>
-    <g class="bob">${out}</g>${drones}</svg>`;
+    <g class="bob">${silhouette(body)}${out}</g>${drones}</svg>`;
+}
+
+// A card as a compact sticker: the real part sticker for upgrades, a die-cut icon for everything else.
+export function cardSticker(id) {
+  return upgradeSticker(id) || cardIcon(id);
 }
 
 // A single upgrade as a standalone sticker (Workshop slots, card art).
@@ -372,7 +427,11 @@ export function upgradeSticker(id) {
   const shapes = mountShapes(id, limb);
   if (!shapes.length) return null;
   const pal = { main: '#C9D3EA', dark: '#4C5778', light: '#fff', accent: c.frame ? FRAMES[c.frame].color : '#FFC929', glow: '#9FF3FF' };
-  return `<svg class="icon up-icon" viewBox="-50 -50 100 100" aria-hidden="true">${sticker(shapes, pal)}</svg>`;
+  // Fit the viewBox to the sticker so every item fills its spot the same way.
+  const b = bbox(shapes);
+  const size = Math.max(b.x1 - b.x0, b.y1 - b.y0) + 18;
+  const vb = `${(b.cx - size / 2).toFixed(1)} ${(b.cy - size / 2).toFixed(1)} ${size.toFixed(1)} ${size.toFixed(1)}`;
+  return `<svg class="icon up-icon" viewBox="${vb}" aria-hidden="true">${sticker(shapes, pal)}</svg>`;
 }
 
 // Where a limb's HP tag sits, as % of the mech box.

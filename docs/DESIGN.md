@@ -131,7 +131,8 @@ Each Frame has a 20-card deck: 12 shared crew cards plus 8 of its own. Brakka, L
 - **Offline first.** Build and playtest the full offline game before any online work.
 - **AI is the signature threat.** Higher Tower floors must punish mistakes: the climb becomes about game knowledge and skill, not luck. The AI must play fair (no peeking at hidden hands or Workshops); it reasons about what you *might* have.
 - **Art: modular sticker mechs, clean anime-mecha style.** Clean vector art (SVG), angular armor, slim ink outlines, crisp highlights, hard cel shading. No pixel art.
-  - Every mech part (head, torso, each arm, legs) is its **own die-cut sticker** with its own white border and shadow.
+  - Every mech part (head, torso, each arm, legs) is its **own die-cut sticker**, placed loose (not touching) inside a dark silhouette of the whole mech. A destroyed part leaves its empty slot in the silhouette.
+  - **Cards are stickers.** The hand is a row of compact stickers (the actual part sticker for upgrades). Tap to read; drag onto a glowing limb to build. The build shows as a ghost sticker on that limb with a countdown until it lands.
   - Upgrades are stickers too: weapons, plating and boosters **slap on** over a part (fist upgrades cover the fist).
   - Hurt parts hang loose and get scuffed; destroyed parts **peel off** and leave a dashed ghost.
   - Stickers have a white die-cut plus a thin dark rim (Block Dungeon reference). Card icons are stickers too.

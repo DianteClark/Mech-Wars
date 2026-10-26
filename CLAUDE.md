@@ -14,4 +14,5 @@ Sticker-style mech TCG in plain HTML/JS (ES modules, no build step), hosted on G
 - Theme is dark (`--bg`, `--panel*` tokens in styles.css). Grid columns holding mechs must use `minmax(0, …)` or the mech pushes rails off-screen. Never animate `transform` on rows (shifts the layout); pulse with box-shadow.
 - Screenshot-check UI at 375×667 (SE) and 430×932 (Pro Max) before pushing.
 - Mech art (`src/ui/art.js`): each part is its own sticker via `sticker()`; upgrades come from `mountShapes()` and are positioned at `BODIES[frame].mounts`. Right arms are auto-mirrored from left arms. New Frames need a body plan with pivot and mount points.
+- Hand cards are draggable stickers (`[data-hand]`, pointer events in app.js). Drop detection is area-based over `#box-you .limb` and rail rows; tap opens the card sheet, which keeps play buttons as a fallback.
 - Copy style: sentence case, plain verbs, no all-caps labels.

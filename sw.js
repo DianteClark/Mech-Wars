@@ -1,6 +1,6 @@
 // Offline support. Network first (so updates always arrive when online),
 // falling back to the cached copy when there's no connection.
-const CACHE = 'mechwars-v4';
+const CACHE = 'mechwars-v5';
 const CORE = [
   './', 'index.html', 'manifest.webmanifest', 'src/styles.css',
   'src/ui/app.js', 'src/ui/art.js', 'src/ui/store.js', 'src/ui/tower.js', 'src/ai-worker.js',

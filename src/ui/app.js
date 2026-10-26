@@ -9,11 +9,11 @@ import {
   hasOracle, apMax, statVal, destroyedCount,
 } from '../engine/game.js';
 import { chooseTurn, LEVELS } from '../engine/ai.js';
-import { mechSVG, iconSVG, cardIcon, logoSVG, chipPos, limbGlyph, TYPE_COLORS, TYPE_NAMES, INK } from './art.js';
+import { mechSVG, iconSVG, cardIcon, cardSticker, logoSVG, limbGlyph, TYPE_COLORS, TYPE_NAMES, INK } from './art.js';
 import { load, save, update, resetAll } from './store.js';
 import { newRun, startBattle, twistFor, enemyFor, aiLevel, reward, isBoss } from './tower.js';
 
-const VERSION = '0.4';
+const VERSION = '0.5';
 const app = document.getElementById('app');
 const fx = document.getElementById('fx');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms * speed()));
@@ -301,8 +301,10 @@ function partRail(p, side) {
       const best = modes.map((md) => attackProfile(you, k, md).dmg);
       right = `<span class="pr-go">${modes.includes('fire') ? 'Fire' : modes[0] === 'kick' ? 'Kick' : 'Punch'} ${Math.max(...best)}</span>`;
     } else if (!isFoe && ui.sel && ui.mode !== 'idle' && ui.sel.limb === k) cls += ' selected';
+    const building = !isFoe ? p.workshop.find((w) => w.target === k) : null;
+    const sub2 = building ? `<span class="pr-mount building">${CLOCK}${building.timer} · ${CARDS[building.id].name}</span>` : m ? `<span class="pr-mount">${m.name}</span>` : '';
     rows += `<button class="${cls}" ${act} data-limb="${k}" aria-label="${isFoe ? 'Enemy' : 'Your'} ${LIMB_NAMES[k]}">
-      ${limbGlyph(k)}<span class="pr-name">${RAIL_NAMES[k]}${m ? `<span class="pr-mount">${m.name}</span>` : ''}</span>${right}</button>`;
+      ${limbGlyph(k)}<span class="pr-name">${RAIL_NAMES[k]}${sub2}</span>${right}</button>`;
   }
   return `<div class="rail ${isFoe ? 'foe-rail' : 'you-rail'}">${rows}</div>`;
 }
@@ -312,6 +314,7 @@ function mechPad(p, side) {
   const opts = {};
   if (ui.fxSlap && ui.fxSlap.p === idx) { opts.slap = ui.fxSlap.limb; opts.slapKind = ui.fxSlap.kind; }
   if (ui.fxPeel && ui.fxPeel.p === idx) opts.peel = ui.fxPeel.limb;
+  if (idx === 0) opts.pending = p.workshop.filter((w) => w.target);
   return `<div class="pad ${side}-pad"><div class="mech-box" id="box-${side}">${mechSVG(p.frame, p, opts)}</div></div>`;
 }
 
@@ -328,14 +331,14 @@ function anyMoves() {
 
 function handView() {
   const you = G.players[0];
+  const myTurn = G.active === 0 && !ui.busy;
   const cards = you.hand.map((id, i) => {
     const c = CARDS[id];
-    const ok = G.active === 0 && !ui.busy && canPlay(G, you, id);
-    const foot = c.type === 'order' ? '<span class="foot instant">Instant</span>' : `<span class="foot">${CLOCK}${buildPlan(you, id).time}<span class="long"> turns</span></span>`;
-    return `<button class="card t-${c.type} ${ok ? 'playable' : 'cant'} ${c.sig ? 'sig' : ''}" data-act="card" data-i="${i}" aria-label="${c.name}, costs ${cardCost(you, id)}">
-      <span class="cost">${cardCost(you, id)}</span>
-      <span class="band" style="background:${TYPE_COLORS[c.type]}">${cardIcon(id)}</span>
-      <span class="nm">${c.name}</span>${foot}
+    const ok = myTurn && canPlay(G, you, id);
+    const t = c.type === 'order' ? '' : `<span class="hs-time">${CLOCK}${buildPlan(you, id).time}</span>`;
+    return `<button class="hs t-${c.type} ${ok ? 'playable' : 'cant'} ${c.sig ? 'sig' : ''}" data-hand="${i}" aria-label="${c.name}, costs ${cardCost(you, id)}${ok ? '. Drag onto your mech or tap for details' : ''}">
+      <span class="hs-disc" style="--tc:${TYPE_COLORS[c.type]}"></span>${cardSticker(id)}
+      <span class="hs-cost">${cardCost(you, id)}</span>${t}${c.sig ? '<span class="hs-sig">★</span>' : ''}
     </button>`;
   }).join('');
   return `<div class="hand" id="hand">${cards || '<p class="muted empty-hand">Your hand is empty.</p>'}</div>`;
@@ -370,7 +373,7 @@ function trayView() {
 // One-time coaching tips, shown until dismissed (Settings can turn them off or bring them back).
 const TIPS = [
   { id: 'attack', when: () => LIMBS.some(canAct) && you().turnsTaken <= 3, text: 'Tap a glowing row (or the part itself) to attack with that limb. Each limb acts once per turn.' },
-  { id: 'build', when: () => you().hand.some((id) => CARDS[id].type !== 'order' && canPlay(G, you(), id)), text: 'Tap a card to build it. Builds go into your Workshop and land after the turns on the card.' },
+  { id: 'build', when: () => you().hand.some((id) => CARDS[id].type !== 'order' && canPlay(G, you(), id)), text: 'Drag a glowing sticker onto your mech to build it. The countdown shows on the limb. Tap a sticker for details.' },
   { id: 'shield', when: () => !isExposed(G.players[1]), text: 'The enemy Core is shielded. Break any 2 of its limbs to open it up.' },
   { id: 'open', when: () => isExposed(G.players[1]), text: 'Their Core is open! Every hit on it brings you closer to the win.' },
   { id: 'mine-open', when: () => isExposed(you()), text: 'Your Core is exposed. Rebuild Kits and Guard drones buy you time.' },
@@ -443,7 +446,7 @@ function decorateBattle() {
   }
   // Fit the hand: overlap cards only as much as needed.
   const hand = document.getElementById('hand');
-  if (hand && hand.children.length > 1) {
+  if (hand && hand.children.length > 1 && hand.children[0].classList.contains('hs')) {
     const cw = hand.children[0].getBoundingClientRect().width;
     const n = hand.children.length;
     const avail = hand.clientWidth - 8;
@@ -857,11 +860,11 @@ function manual() {
   return `<div class="screen">
     <div class="topbar">${backBtn()}<h2 class="ink-text">How to play</h2><span class="spacer"></span></div>
     <div class="scroll manual stack">
-      <div class="detail-panel"><h3>Win the fight</h3><p>Destroy the enemy Core. It’s shielded by four limbs: head, two arms and legs. Break any two limbs and the Core opens up. The tag on each mech’s chest shows how many limbs are left to break.</p></div>
+      <div class="detail-panel"><h3>Win the fight</h3><p>Destroy the enemy Core. It’s shielded by four limbs: head, two arms and legs. Break any two limbs and the Core opens up. The Core row beside each mech shows how many are left to break.</p></div>
       <div class="detail-panel"><h3>Your turn</h3><ul>
-        <li><b>Attack:</b> tap a glowing tag on your mech, then a red tag on the enemy. Each limb acts once per turn: arms punch, legs kick, mounted weapons fire.</li>
+        <li><b>Attack:</b> tap a glowing row (or part) on your side, then a red row (or part) on the enemy. Each limb acts once per turn: arms punch, legs kick, mounted weapons fire.</li>
         <li><b>Actions:</b> you get 2 per turn (1 if your legs are down).</li>
-        <li><b>Build:</b> tap a card. It costs energy and goes into your Workshop, then lands after the turns shown on the card.</li>
+        <li><b>Build:</b> drag a sticker from your hand onto a glowing limb. It costs energy, and the countdown on that limb shows when it lands. Tap any sticker to read it first.</li>
         <li>When you’re done, tap <b>End turn</b>.</li></ul></div>
       <div class="detail-panel"><h3>Your Core is your energy</h3><p>Each turn your Core makes energy for cards. A damaged Core makes less:</p>
         <ul><li>15–20 Core: 4 energy</li><li>8–14 Core: 3 energy</li><li>1–7 Core: 2 energy</li></ul>
@@ -926,10 +929,11 @@ function cardSheet(i) {
         return `<button class="btn opt" data-act="play" data-id="${id}" ${t ? `data-t="${t}"` : ''}>${verb}${t ? ` ${LIMB_NAMES[t].toLowerCase()}` : ''}<span class="sub">${extra.replace(/^ · /, '') || (c.type === 'order' ? `${cost} energy` : `${cost} energy · ready in ${plural(plan.time, 'turn')}`)}</span></button>`;
       }).join('');
     }
+    actions = `<p class="note">Tip: you can also drag this sticker straight onto ${c.slots || ['repair', 'rebuild'].includes(c.effect) ? 'a glowing limb' : 'your mech'}.</p>` + actions;
   } else {
     actions = `<p class="note warn">${reason}</p>`;
   }
-  return `<div class="big-card-art" style="background:${TYPE_COLORS[c.type]}">${cardIcon(id)}</div>
+  return `<div class="big-card-art" style="--tc:${TYPE_COLORS[c.type]}">${cardSticker(id)}</div>
     <h3>${c.sig ? '★ ' : ''}${c.name}</h3><div class="sub-line">${TYPE_NAMES[c.type]}${c.frame ? ` · ${FRAMES[c.frame].name}` : ' · shared'}</div>
     <p>${c.text}</p><div class="stats">${stats.join('')}</div>
     ${keywordNotes(c)}
@@ -1180,7 +1184,142 @@ handlers.saveNameGo = () => {
   go('setup');
 };
 
+// ---------------------------------------------------------------- drag stickers onto the mech
+
+// Legal drops for a hand card: limb names, 'any' (cards with no target), or Workshop slot indexes (Rush Order).
+function dropTargets(id) {
+  const acts = legalActions(G).filter((a) => a.t === 'play' && a.id === id);
+  return {
+    limbs: new Set(acts.filter((a) => a.target).map((a) => a.target)),
+    any: acts.some((a) => !a.target && a.slot === undefined) ? acts.find((a) => !a.target && a.slot === undefined) : null,
+    slots: new Set(acts.filter((a) => a.slot !== undefined).map((a) => a.slot)),
+  };
+}
+
+function dropElements() {
+  return [...document.querySelectorAll('#box-you .limb[data-limb], .you-rail [data-limb]')];
+}
+
+function markDrops(t) {
+  for (const el of dropElements()) {
+    const k = el.dataset.limb;
+    if (t.limbs.has(k)) el.classList.add('drop-ok');
+  }
+  if (t.any) document.querySelector('.you-stage')?.classList.add('drop-any');
+  if (t.slots.size) {
+    const you0 = you();
+    t.slots.forEach((i) => {
+      const w = you0.workshop[i];
+      document.querySelectorAll('.dock .slot')[i]?.classList.add('drop-ok');
+      if (w?.target) for (const el of dropElements()) if (el.dataset.limb === w.target) el.classList.add('drop-ok');
+    });
+  }
+}
+
+function clearDrops() {
+  document.querySelectorAll('.drop-ok, .drop-hover, .drop-any').forEach((el) => el.classList.remove('drop-ok', 'drop-hover', 'drop-any'));
+}
+
+// What the finger is over: { limb } or { slot } or { any } or null.
+function dropAt(x, y, t) {
+  const el = document.elementFromPoint(x, y);
+  if (!el) return null;
+  const slotEl = el.closest('.dock .slot');
+  if (slotEl && t.slots.size) {
+    const i = [...document.querySelectorAll('.dock .slot')].indexOf(slotEl);
+    if (t.slots.has(i)) return { slot: i, el: slotEl };
+  }
+  // Match by area, not exact pixel: parts have gaps and the finger covers more than one point.
+  let limbEl = el.closest('.you-rail [data-limb]');
+  if (!limbEl) {
+    let best = null, bestArea = Infinity;
+    for (const c of document.querySelectorAll('#box-you .limb.drop-ok, #box-you .limb')) {
+      const r = c.getBoundingClientRect();
+      if (x >= r.left - 6 && x <= r.right + 6 && y >= r.top - 6 && y <= r.bottom + 6) {
+        const area = r.width * r.height + (c.classList.contains('drop-ok') ? 0 : 1e6);
+        if (area < bestArea) { best = c; bestArea = area; }
+      }
+    }
+    limbEl = best;
+  }
+  if (limbEl) {
+    const k = limbEl.dataset.limb;
+    if (t.limbs.has(k)) return { limb: k, el: limbEl };
+    if (t.slots.size) {
+      const i = you().workshop.findIndex((w, j) => t.slots.has(j) && w.target === k);
+      if (i >= 0) return { slot: i, el: limbEl };
+    }
+  }
+  if (t.any && el.closest('.you-stage')) return { any: true, el: document.querySelector('.you-stage') };
+  return null;
+}
+
+const drag = { start: null, active: false, ghost: null, targets: null, over: null, suppressClick: false };
+
+app.addEventListener('pointerdown', (e) => {
+  const el = e.target.closest('[data-hand]');
+  if (!el || ui.screen !== 'battle' || ui.sheet) return;
+  drag.start = { x: e.clientX, y: e.clientY, i: Number(el.dataset.hand), el, id: e.pointerId };
+});
+
+app.addEventListener('pointermove', (e) => {
+  if (!drag.start || e.pointerId !== drag.start.id) return;
+  const dx = e.clientX - drag.start.x, dy = e.clientY - drag.start.y;
+  if (!drag.active) {
+    if (Math.hypot(dx, dy) < 8) return;
+    const id = you().hand[drag.start.i];
+    if (G.active !== 0 || ui.busy || ui.mode !== 'idle' || !canPlay(G, you(), id)) { drag.start = null; return; }
+    drag.active = true;
+    drag.targets = dropTargets(id);
+    drag.ghost = document.createElement('div');
+    drag.ghost.className = 'drag-ghost';
+    drag.ghost.innerHTML = cardSticker(id);
+    fx.appendChild(drag.ghost);
+    drag.start.el.classList.add('lifted');
+    document.body.classList.add('dragging');
+    markDrops(drag.targets);
+  }
+  drag.ghost.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -70%) rotate(-6deg)`;
+  const hit = dropAt(e.clientX, e.clientY, drag.targets);
+  if (drag.over?.el !== hit?.el) {
+    drag.over?.el?.classList.remove('drop-hover');
+    hit?.el?.classList.add('drop-hover');
+  }
+  drag.over = hit;
+  e.preventDefault();
+}, { passive: false });
+
+function endDrag(e, cancelled) {
+  if (!drag.start) return;
+  const wasActive = drag.active;
+  if (wasActive) {
+    const id = you().hand[drag.start.i];
+    const hit = cancelled ? null : dropAt(e.clientX, e.clientY, drag.targets);
+    drag.ghost?.remove();
+    drag.start.el.classList.remove('lifted');
+    document.body.classList.remove('dragging');
+    clearDrops();
+    drag.suppressClick = true;
+    setTimeout(() => { drag.suppressClick = false; }, 50);
+    if (hit) {
+      let a;
+      if (hit.slot !== undefined) a = { t: 'play', id, slot: hit.slot };
+      else if (hit.limb) a = { t: 'play', id, target: hit.limb };
+      else a = drag.targets.any;
+      if (a && isLegal(G, a)) step(a);
+    }
+  }
+  drag.start = null; drag.active = false; drag.ghost = null; drag.over = null; drag.targets = null;
+}
+app.addEventListener('pointerup', (e) => endDrag(e, false));
+app.addEventListener('pointercancel', (e) => endDrag(e, true));
+
 app.addEventListener('click', (e) => {
+  const handEl = e.target.closest('[data-hand]');
+  if (handEl && !ui.sheet) {
+    if (!drag.suppressClick) { ui.mode = 'idle'; ui.sel = null; openSheet(cardSheet(Number(handEl.dataset.hand))); }
+    return;
+  }
   const stop = e.target.closest('[data-stop]');
   const el = e.target.closest('[data-act]');
   // Taps on the sheet body shouldn't close it.
