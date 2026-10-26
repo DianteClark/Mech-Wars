@@ -89,6 +89,13 @@ The crew is mostly **flavor/explanation** for where parts come from — not unit
 - Costs **energy** and the **Pilot's passive bonus is lost that turn**.
 - Designed to be a big decision, not a routine move.
 
+## Direction
+
+- **Offline first.** Build and playtest the full offline game before any online work.
+- **AI is the signature threat.** Higher Tower floors must punish mistakes: the climb becomes about game knowledge and skill, not luck. The AI must play fair (no peeking at hidden hands or Workshops); it reasons about what you *might* have.
+- **Art: epic sticker style.** Clean vector art (SVG), bold outlines, white sticker borders, soft drop shadows. No pixel art. References: Harvest Pop, Block Dungeon.
+- **UI polish is a priority**, not an afterthought. Mobile-friendly from day one.
+
 ## Progression model: fighting-game style
 
 - Players **unlock Frames** (mechs). Each Frame is a complete strategy, so every one must feel unique and be viable.
