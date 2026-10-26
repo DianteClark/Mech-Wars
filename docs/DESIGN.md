@@ -103,6 +103,8 @@ The crew is mostly **flavor/explanation** for where parts come from — not unit
 - Each win earns currency, scaling with depth.
 - **Twists** (floor modifiers) change the rules for a stretch, e.g. no healing for the next 2–3 battles, limited Core energy output.
 - Gives players time to learn each Frame and develop strategy, without needing online lobbies.
+- **Every battle starts fresh**: no damage or parts carry over. The run is a streak of standalone fights.
+- Difficulty climbs through stronger/rarer enemy Frames, smarter AI, and harsher twists, not stat-inflated enemies.
 
 ### PvP (later)
 
