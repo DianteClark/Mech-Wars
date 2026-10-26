@@ -13,7 +13,7 @@ import { mechSVG, iconSVG, cardIcon, cardSticker, logoSVG, limbGlyph, TYPE_COLOR
 import { load, save, update, resetAll } from './store.js';
 import { newRun, startBattle, twistFor, enemyFor, aiLevel, reward, isBoss } from './tower.js';
 
-const VERSION = '0.5';
+const VERSION = '0.6';
 const app = document.getElementById('app');
 const fx = document.getElementById('fx');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms * speed()));
@@ -1326,7 +1326,7 @@ app.addEventListener('click', (e) => {
   if (stop && el && !stop.contains(el)) return;
   // Tapping a mech part directly works the same as tapping its tag.
   if (ui.screen === 'battle' && !ui.sheet) {
-    const part = e.target.closest('.limb, .core-gem, .part-detail');
+    const part = e.target.closest('.limb, .core-gem, .pstk');
     if (part && !el) {
       const limb = part.dataset.limb;
       if (part.closest('#box-you') && ui.mode === 'idle' && limb !== 'core') { selectLimb(limb); return; }

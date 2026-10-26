@@ -6,9 +6,11 @@ Each player brings a single **Frame** (their mech), a **Pilot** who shapes how i
 
 ## Status
 
-🎮 **Prototype v0.5 is playable.** Four Frames, a fair-play AI with five skill tiers, Ranked and Practice Tower climbs, a local leaderboard, and scrap unlocks. Works offline once loaded, and installs to the iPhone Home Screen.
+🎮 **Prototype v0.6 is playable.** Four Frames, a fair-play AI with five skill tiers, Ranked and Practice Tower climbs, a local leaderboard, and scrap unlocks. Works offline once loaded, and installs to the iPhone Home Screen.
 
-**New in v0.5:** mechs are loose part stickers inside a silhouette; cards are compact stickers you tap to read and drag onto a limb to build; build countdowns show right on the limb.
+**New in v0.6:** full art revamp in a serious anime-mecha style. Small die-cut part stickers inside a larger silhouette, all-new item and attachment stickers, new logo and app icon.
+
+**v0.5:** mechs are loose part stickers inside a silhouette; cards are compact stickers you tap to read and drag onto a limb to build; build countdowns show right on the limb.
 
 **v0.4:** redesigned battle arena: dark theme, diagonal layout with lit platforms, part status rails beside each mech (no numbers on the art), and Block Dungeon-style stickers with a dark rim.
 
@@ -34,6 +36,7 @@ To run locally: `npm run serve`, then open http://localhost:8080.
 | `node tools/test.mjs` | Engine tests (rules, replay determinism, AI fairness) |
 | `node tools/sim.mjs [games] [level]` | AI-vs-AI matchup table for balance checks |
 | `node tools/tune.mjs [iterations] [games]` | Self-play tuning of the AI's evaluation weights |
+| `node tools/icons.mjs` | Rebuilds the app icon from the game's head sticker art (PNGs need `@resvg/resvg-js`) |
 
 ## Repo layout
 

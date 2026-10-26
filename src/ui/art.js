@@ -1,531 +1,666 @@
-// Sticker-style vector art, drawn in code. Everything is SVG: crisp at any size, no pixels.
+// Mech Wars — art. Everything is vector SVG drawn in code: crisp at any size, no pixels.
 //
-// Mechs are modular: every part (head, torso, each arm, legs) is its own die-cut sticker
-// with its own white border and drop shadow. Upgrades are smaller stickers slapped on top
-// of a part. Hurt parts hang loose and get scuffed; destroyed parts peel off and leave a ghost.
+// Style: serious anime mecha (real-robot proportions, armor panels, V-fins, mono-eyes).
+// Every mech is a large dark silhouette with small die-cut part stickers placed inside it,
+// Block Dungeon style. Items and attachments are the same kind of small sticker.
 
 import { CARDS, FRAMES } from '../engine/data.js';
 
-export const INK = '#121633';
-const LINE_W = 3;        // ink outline
-const CUT_W = 10;        // white die-cut border (stroke width; half shows outside)
-const RIM_W = CUT_W + 4.5; // thin dark rim around the die-cut, Block Dungeon style
+export const INK = '#15172A';
 
-function shade(hex, amt) {
-  const n = parseInt(hex.slice(1), 16);
-  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
-  const f = (c) => Math.max(0, Math.min(255, Math.round(amt < 0 ? c * (1 + amt) : c + (255 - c) * amt)));
-  return '#' + ((1 << 24) + (f(r) << 16) + (f(g) << 8) + f(b)).toString(16).slice(1);
+// Sticker stroke sizes, in each sticker's local units.
+const OUT = 1.15;            // ink outline on every shape
+const CUT = 3.4;             // white die-cut (stroke width; half shows outside)
+const RIM = CUT + 2.2;       // thin dark rim around the die-cut
+
+// ---------------------------------------------------------------- helpers
+
+const P = (d, t = 'arm') => ['path', { d }, t];
+const C = (cx, cy, r, t = 'arm') => ['circle', { cx, cy, r }, t];
+const R = (x, y, w, h, t = 'arm', rx = 1.2) => ['rect', { x, y, width: w, height: h, rx }, t];
+// Polygon from a flat list of numbers.
+const poly = (t, ...n) => { let d = `M${n[0]} ${n[1]}`; for (let i = 2; i < n.length; i += 2) d += ` L${n[i]} ${n[i + 1]}`; return P(d + ' Z', t); };
+// Mirror a polygon across x = 0.
+const mir = (t, ...n) => poly(t, ...n.map((v, i) => (i % 2 === 0 ? -v : v)));
+const pair = (t, ...n) => [poly(t, ...n), mir(t, ...n)];
+const line = (d) => P(d, 'line');
+
+const DECOR = new Set(['line', 'hi', 'hiline', 'glow']);
+
+function mix(a, b, t) {
+  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+  const ch = (sh) => Math.round(((pa >> sh) & 255) * (1 - t) + ((pb >> sh) & 255) * t);
+  return '#' + ((1 << 24) + (ch(16) << 16) + (ch(8) << 8) + ch(0)).toString(16).slice(1);
 }
-
-// ---- shape helpers: [tag, attrs, tone]
-const P = (d, tone = 'main') => ['path', { d }, tone];
-const C = (cx, cy, r, tone = 'main') => ['circle', { cx, cy, r }, tone];
-
-// Mirror a path across x = 100 (paths here use absolute M/L/Q/Z only).
-function mx(d) {
-  let i = 0;
-  return d.replace(/-?\d+(\.\d+)?/g, (n) => (i++ % 2 === 0 ? String(200 - Number(n)) : n));
-}
-const both = (d, tone) => [P(d, tone), P(mx(d), tone)];
-
-// Body plans in a 200x200 box.
-// pivot: where a part hinges (for the loose "peeling" tilt). mounts: where upgrade stickers go.
-const BODIES = {
-  // Brawler: broad heavy-armor build, huge pauldrons and gauntlets.
-  brakka: {
-    legs: [
-      ...both('M72 134 L92 134 L94 152 L74 152 Z', 'dark'),
-      ...both('M70 150 L96 150 L95 164 L72 164 Z'),
-      ...both('M68 164 L96 164 L99 186 L60 186 Z'),
-      ...both('M72 152 L92 152', 'line'),
-    ],
-    torso: [
-      P('M78 64 L122 64 L128 76 L72 76 Z', 'dark'),
-      P('M64 74 L136 74 L130 110 L112 128 L88 128 L70 110 Z'),
-      P('M70 78 L104 78 L98 88 L74 92 Z', 'shine'),
-      P('M84 126 L116 126 L112 142 L88 142 Z', 'dark'),
-      P('M100 108 L100 126 M80 112 L88 120 M120 112 L112 120', 'line'),
-    ],
-    armL: [
-      P('M26 66 L64 58 L70 84 L34 92 L22 80 Z'),
-      P('M30 68 L60 62 L58 70 L32 76 Z', 'shine'),
-      P('M38 90 L60 86 L60 106 L40 108 Z', 'dark'),
-      P('M28 104 L64 100 L66 132 L26 134 Z'),
-      P('M32 132 L62 132 L60 152 L34 152 Z', 'dark'),
-      P('M40 136 L40 148 M47 136 L47 148 M54 136 L54 148', 'line'),
-    ],
-    head: [
-      P('M100 50 L82 32 L89 31 L100 42 L111 31 L118 32 Z', 'accent'),
-      P('M86 44 L114 44 L119 56 L112 70 L88 70 L81 56 Z'),
-      P('M88 47 L104 47 L101 52 L86 53 Z', 'shine'),
-      P('M88 56 L112 56 L109 62 L91 62 Z', 'visor'),
-      P('M93 66 L107 66 L104 73 L96 73 Z', 'dark'),
-    ],
-    core: [100, 95, 11],
-    pivot: { head: [100, 72], armL: [60, 70], armR: [140, 70], legs: [100, 134] },
-    mounts: { head: [100, 40], armL: [46, 150], armR: [154, 150], legs: [100, 178] },
-  },
-  // Gunner: tall and lean, sensor mono-eye, long antenna and backpack fins.
-  longshot: {
-    legs: [
-      ...both('M82 126 L95 126 L95 148 L84 148 Z', 'dark'),
-      ...both('M79 146 L97 146 L96 158 L80 158 Z'),
-      ...both('M81 158 L96 158 L97 178 L83 178 Z', 'dark'),
-      ...both('M74 177 L99 177 L101 188 L68 188 Z'),
-    ],
-    torso: [
-      ...both('M72 66 L56 40 L63 38 L80 62 Z', 'accent'),
-      P('M72 62 L128 62 L124 98 L108 114 L92 114 L76 98 Z'),
-      P('M77 66 L106 66 L101 75 L79 78 Z', 'shine'),
-      P('M88 112 L112 112 L110 130 L90 130 Z', 'dark'),
-      P('M100 98 L100 112 M84 72 L84 92 M116 72 L116 92', 'line'),
-    ],
-    armL: [
-      P('M50 64 L74 62 L76 80 L52 84 Z'),
-      P('M53 66 L70 65 L68 71 L54 73 Z', 'shine'),
-      P('M53 84 L67 82 L67 106 L55 108 Z', 'dark'),
-      P('M48 106 L70 104 L72 136 L50 138 Z'),
-      P('M52 138 L68 138 L66 150 L54 150 Z', 'dark'),
-    ],
-    head: [
-      P('M110 40 L125 16 L129 18 L115 42 Z', 'accent'),
-      P('M88 36 L112 36 L117 48 L110 60 L90 60 L83 48 Z'),
-      P('M90 39 L104 39 L101 44 L88 45 Z', 'shine'),
-      P('M89 47 L111 47 L109 53 L91 53 Z', 'visor'),
-      C(103, 50, 3.2, 'ink'),
-    ],
-    core: [100, 86, 10],
-    pivot: { head: [100, 62], armL: [70, 68], armR: [130, 68], legs: [100, 126] },
-    mounts: { head: [100, 32], armL: [60, 148], armR: [140, 148], legs: [100, 182] },
-  },
-  // Tank: a walking fortress. Slab chest, shield pauldrons, wide stance.
-  bastion: {
-    legs: [
-      ...both('M66 136 L92 136 L92 156 L68 156 Z', 'dark'),
-      ...both('M60 152 L96 152 L94 166 L62 166 Z'),
-      ...both('M54 166 L98 166 L100 188 L52 188 Z'),
-      ...both('M58 177 L96 177', 'line'),
-    ],
-    torso: [
-      P('M74 62 L126 62 L132 72 L68 72 Z', 'dark'),
-      P('M54 70 L146 70 L140 114 L120 134 L80 134 L60 114 Z'),
-      P('M60 74 L110 74 L104 84 L62 88 Z', 'shine'),
-      P('M82 128 L118 128 L114 144 L86 144 Z', 'dark'),
-      P('M66 112 L82 126 M134 112 L118 126 M100 116 L100 128', 'line'),
-      C(64, 80, 2.2, 'ink'), C(136, 80, 2.2, 'ink'),
-    ],
-    armL: [
-      P('M14 56 L58 52 L62 86 L26 94 L12 76 Z'),
-      P('M18 58 L54 55 L52 63 L20 67 Z', 'shine'),
-      P('M30 92 L52 90 L52 110 L32 112 Z', 'dark'),
-      P('M22 108 L58 106 L60 140 L22 142 Z'),
-      P('M28 140 L54 140 L52 156 L30 156 Z', 'dark'),
-      P('M28 120 L52 119', 'line'),
-    ],
-    head: [
-      P('M94 44 L100 32 L106 44 Z', 'accent'),
-      P('M82 42 L118 42 L122 54 L117 66 L83 66 L78 54 Z'),
-      P('M85 45 L106 45 L103 50 L84 51 Z', 'shine'),
-      P('M85 52 L115 52 L113 58 L87 58 Z', 'visor'),
-    ],
-    core: [100, 96, 13],
-    pivot: { head: [100, 66], armL: [56, 66], armR: [144, 66], legs: [100, 136] },
-    mounts: { head: [100, 36], armL: [40, 156], armR: [160, 156], legs: [100, 180] },
-  },
-  // Trickster: slim and angular, wing fins, blade forearms.
-  specter: {
-    legs: [
-      ...both('M84 126 L96 126 L94 150 L84 150 Z', 'dark'),
-      ...both('M81 148 L97 148 L92 176 L84 176 Z'),
-      ...both('M76 175 L96 175 L98 186 L70 188 Z', 'dark'),
-    ],
-    torso: [
-      ...both('M72 72 L34 44 L44 42 L82 66 Z', 'accent'),
-      P('M100 56 L132 70 L122 106 L106 120 L94 120 L78 106 L68 70 Z'),
-      P('M100 61 L122 71 L104 78 L78 74 Z', 'shine'),
-      P('M90 118 L110 118 L106 132 L94 132 Z', 'dark'),
-      P('M100 96 L100 118', 'line'),
-    ],
-    armL: [
-      P('M54 68 L74 68 L74 86 L56 90 Z'),
-      P('M56 88 L69 88 L67 106 L58 106 Z', 'dark'),
-      P('M50 104 L71 104 L67 136 L54 138 Z'),
-      P('M52 72 L70 71 L69 77 L54 78 Z', 'shine'),
-      P('M53 136 L65 136 L46 172 Z', 'accent'),
-    ],
-    head: [
-      P('M100 26 L100 12 L104 26 Z', 'accent'),
-      P('M100 26 L117 43 L112 58 L88 58 L83 43 Z'),
-      P('M100 30 L111 41 L96 44 L88 42 Z', 'shine'),
-      P('M89 45 L111 45 L107 51 L93 51 Z', 'visor'),
-    ],
-    core: [100, 88, 10],
-    pivot: { head: [100, 58], armL: [70, 74], armR: [130, 74], legs: [100, 126] },
-    mounts: { head: [100, 24], armL: [58, 140], armR: [142, 140], legs: [100, 180] },
-  },
-};
-for (const b of Object.values(BODIES)) b.armR = b.armL.map(([tag, a, tone]) => (tag === 'path' ? P(mx(a.d), tone) : C(200 - a.cx, a.cy, a.r, tone)));
-
-const GLOW = { brakka: '#FFE45C', longshot: '#7DF9FF', bastion: '#C8FFE9', specter: '#FF8CF2' };
-const DECOR = ['line', 'shine', 'shineline', 'ink'];
 
 function attrs(o) {
   return Object.entries(o).map(([k, v]) => `${k}="${v}"`).join(' ');
 }
 
-function fillFor(tone, pal) {
-  switch (tone) {
-    case 'dark': return pal.dark;
-    case 'light': return pal.light;
-    case 'accent': return pal.accent;
-    case 'visor': return pal.glow;
-    case 'ink': return INK;
-    case 'white': return '#fff';
-    case 'steel': return '#C9D3EA';
-    case 'steelDark': return '#8E9BC0';
-    case 'gold': return '#FFC929';
-    case 'red': return '#FF4F64';
-    case 'mint': return '#39E3A6';
-    case 'sky': return '#9FF3FF';
-    default: return pal.main;
-  }
+// Shared item palette (steel, gunmetal, beam colors).
+const BASE = {
+  steel: '#C9CFDB', steelS: '#8C95AA', gun: '#3B4058', gunS: '#272B3D',
+  beam: '#7CFFB2', beamP: '#FF7AD9', warn: '#F2C230', red: '#E5484D', mint: '#3DDC97',
+  white: '#F1F3F8', glass: '#9FE8FF', orange: '#FF8A3D', ink: INK,
+};
+
+function fillOf(t, pal) {
+  return pal[t] ?? BASE[t] ?? pal.arm;
 }
 
-// One die-cut sticker: soft shadow, white border, then the art with ink outlines.
-function sticker(shapes, pal, { cls = '', attrsStr = '', ghost = false } = {}) {
-  const solid = shapes.filter(([, , t]) => !DECOR.includes(t) && t !== 'visor-free');
-  if (ghost) {
-    const g = solid.map(([tag, a]) => `<${tag} ${attrs(a)}/>`).join('');
-    return `<g class="ghost ${cls}" ${attrsStr} fill="#3A4775" fill-opacity=".35" stroke="#fff" stroke-opacity=".7" stroke-width="2" stroke-dasharray="4 4" stroke-linejoin="round">${g}</g>`;
-  }
-  const outline = solid.map(([tag, a]) => `<${tag} ${attrs(a)}/>`).join('');
-  let art = '';
-  for (const [tag, a, tone] of shapes) {
-    if (tone === 'line') art += `<${tag} ${attrs(a)} fill="none" stroke="${INK}" stroke-width="2.2" stroke-linecap="round" opacity=".45"/>`;
-    else if (tone === 'shine') art += `<${tag} ${attrs(a)} fill="#fff" fill-opacity=".45"/>`;
-    else if (tone === 'shineline') art += `<${tag} ${attrs(a)} fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.4" stroke-linecap="round"/>`;
-    else if (tone === 'ink') art += `<${tag} ${attrs(a)} fill="${INK}"/>`;
-    else art += `<${tag} ${attrs(a)} fill="${fillFor(tone, pal)}" stroke="${INK}" stroke-width="${LINE_W}" stroke-linejoin="round"${tone === 'visor' ? ' class="visor"' : ''}/>`;
-  }
-  return `<g class="stk ${cls}" ${attrsStr}>
-    <g class="stk-shadow" transform="translate(0 4)" fill="#05040F" stroke="#05040F" stroke-width="${RIM_W}" stroke-linejoin="round" opacity=".45">${outline}</g>
-    <g class="stk-rim" fill="${INK}" stroke="${INK}" stroke-width="${RIM_W}" stroke-linejoin="round">${outline}</g>
-    <g class="stk-cut" fill="#fff" stroke="#fff" stroke-width="${CUT_W}" stroke-linejoin="round">${outline}</g>
-    ${art}</g>`;
-}
-
-// ---- Upgrade stickers. Shapes are relative to the mount anchor (0,0).
-function mountShapes(id, limb) {
-  const c = CARDS[id];
-  const flip = limb === 'armR' ? -1 : 1;
-  const X = (x) => x * flip;
-  const poly = (pts, tone) => P('M' + pts.map(([x, y]) => `${X(x)} ${y}`).join(' L') + ' Z', tone);
-  if (c.type === 'weapon') {
-    if (limb === 'legs') { // hip missile pods
-      return [poly([[-36, -26], [-20, -28], [-18, -8], [-34, -6]], 'steel'), poly([[36, -26], [20, -28], [18, -8], [34, -6]], 'steel'),
-        C(-27, -20, 3.2, 'red'), C(-26, -12, 3.2, 'red'), C(27, -20, 3.2, 'red'), C(26, -12, 3.2, 'red')];
-    }
-    if (limb === 'head') {
-      if (c.shred) return [poly([[-12, 4], [0, -14], [12, 4], [6, 8], [-6, 8]], 'gold'), P('M-5 1 L5 1', 'line')]; // headbutt crest
-      if (c.emp) return [poly([[-4, 6], [-3, -12], [3, -12], [4, 6]], 'steel'), C(0, -14, 4.5, 'sky')];
-      return [poly([[-16, 6], [-12, -4], [-6, -4], [-6, 8]], 'steel'), poly([[16, 6], [12, -4], [6, -4], [6, 8]], 'steel'), C(-10, 1, 2, 'ink'), C(10, 1, 2, 'ink')];
-    }
-    // Arm weapons: carried along the forearm, barrel pointing down.
-    if (c.dmg >= 6 || c.pierce >= 2) { // rail lance: long barrel
-      return [poly([[-8, -46], [6, -46], [8, -14], [-6, -14]], 'steel'), poly([[-4, -14], [4, -14], [3, 26], [-3, 26]], 'white'),
-        poly([[-6, 22], [6, 22], [5, 30], [-5, 30]], 'sky'), P(`M${X(-6)} -36 L${X(6)} -36`, 'line')];
-    }
-    if (id === 'sniper_pistol') {
-      return [poly([[-8, -22], [8, -22], [8, -8], [-8, -8]], 'steel'), poly([[-3, -8], [3, -8], [3, 12], [-3, 12]], 'white'), C(X(9), -18, 3, 'sky')];
-    }
-    if (id === 'ghost_blade') return [poly([[-6, -14], [6, -14], [3, 30], [-12, 40]], 'sky'), poly([[-8, -18], [8, -18], [8, -10], [-8, -10]], 'dark')];
-    if (c.bash) return [poly([[-14, -34], [14, -34], [16, -6], [0, 6], [-16, -6]], 'mint'), P(`M0 -30 L0 0`, 'line')];
-    const len = c.dmg >= 5 ? 22 : 16; // rifles and cannons
-    return [poly([[-10, -30], [10, -30], [10, -10], [-10, -10]], 'steel'), poly([[-4, -10], [4, -10], [4, len], [-4, len]], 'white'),
-      ...(c.dmg >= 5 ? [poly([[-9, -10], [-5, -10], [-5, len - 2], [-9, len - 2]], 'white')] : []), P(`M${X(-6)} -22 L${X(6)} -22`, 'line')];
-  }
-  if (c.type === 'boost') {
-    if (c.punch) { // gauntlet sticker swaps over the fist
-      const big = c.shred;
-      return [poly([[-17, -20], [17, -20], [19, 6], [-19, 6]], big ? 'red' : 'gold'),
-        poly([[-14, 6], [14, 6], [12, 14], [-12, 14]], 'dark'),
-        ...(big ? [poly([[-12, 14], [-8, 22], [-4, 14]], 'white'), poly([[-2, 14], [2, 22], [6, 14]], 'white'), poly([[8, 14], [12, 22], [14, 14]], 'white')] : []),
-        P('M-8 -14 L-8 2 M0 -14 L0 2 M8 -14 L8 2', 'line')];
-    }
-    if (c.kick && c.ap && id !== 'phase_treads') { // boot thrusters
-      return [poly([[-40, -10], [-22, -12], [-20, 6], [-38, 8]], 'gold'), poly([[40, -10], [22, -12], [20, 6], [38, 8]], 'gold'),
-        poly([[-36, 8], [-26, 8], [-31, 18]], 'red'), poly([[36, 8], [26, 8], [31, 18]], 'red')];
-    }
-    if (c.ap) { // phase treads: leg fins
-      return [poly([[-30, -40], [-20, -38], [-24, -10], [-38, -16]], 'accent'), poly([[30, -40], [20, -38], [24, -10], [38, -16]], 'accent')];
-    }
-    if (c.oracle) return [poly([[-12, 6], [0, -8], [12, 6], [0, 14]], 'white'), C(0, 3, 5.5, 'accent'), C(0, 3, 2.2, 'ink')];
-    if (c.weaponBonus) return [poly([[2, 0], [18, -4], [20, 6], [4, 10]], 'steel'), C(14, 3, 4.5, 'sky')];
-    if (c.guardGen) return [poly([[-22, -18], [22, -18], [16, -4], [-16, -4]], 'steel'), P('M-14 -18 Q0 -38 14 -18 Z', 'mint')];
-    if (c.guardBlock) return [poly([[-16, -44], [16, -44], [18, -12], [0, 2], [-18, -12]], 'mint'), poly([[-10, -38], [6, -38], [2, -30], [-10, -28]], 'white')];
-  }
-  return [];
-}
-
-function platingShapes(limb, body) {
-  const at = { head: [100, 50], legs: [100, 158], armL: [body.mounts.armL[0], 116], armR: [body.mounts.armR[0], 116] }[limb];
-  const [x, y] = at;
-  const w = limb === 'head' ? 12 : 13, h = limb === 'head' ? 7 : 10;
-  if (limb === 'legs') {
-    return [P(`M${x - 34} ${y - h} L${x - 14} ${y - h} L${x - 15} ${y + h} L${x - 33} ${y + h} Z`, 'steel'),
-      P(`M${x + 34} ${y - h} L${x + 14} ${y - h} L${x + 15} ${y + h} L${x + 33} ${y + h} Z`, 'steel'),
-      C(x - 24, y, 1.8, 'ink'), C(x + 24, y, 1.8, 'ink')];
-  }
-  return [P(`M${x - w} ${y - h} L${x + w} ${y - h} L${x + w - 2} ${y + h} L${x - w + 2} ${y + h} Z`, 'steel'),
-    C(x - w + 5, y - h + 4, 1.6, 'ink'), C(x + w - 5, y - h + 4, 1.6, 'ink'), P(`M${x - w + 4} ${y + 2} L${x + w - 4} ${y + 2}`, 'line')];
-}
-
-function scuffs(limb, body) {
-  const [x, y] = { head: [106, 52], armL: [body.mounts.armL[0] + 4, 116], armR: [body.mounts.armR[0] - 4, 116], legs: [84, 160] }[limb];
-  return `<g stroke="${INK}" stroke-width="1.6" stroke-linecap="round" opacity=".7" fill="none">
-    <path d="M${x - 6} ${y - 5} L${x + 1} ${y + 1} L${x - 2} ${y + 4} L${x + 6} ${y + 9}"/><path d="M${x + 4} ${y - 6} L${x + 8} ${y - 2}"/></g>`;
-}
-
-// Bounding box of a part's solid shapes (paths use absolute coordinates).
 function bbox(shapes) {
   let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
   const add = (x, y) => { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); };
-  for (const [tag, a, tone] of shapes) {
-    if (DECOR.includes(tone)) continue;
+  for (const [tag, a, t] of shapes) {
+    if (DECOR.has(t)) continue;
     if (tag === 'circle') { add(a.cx - a.r, a.cy - a.r); add(a.cx + a.r, a.cy + a.r); continue; }
+    if (tag === 'rect') { add(a.x, a.y); add(a.x + a.width, a.y + a.height); continue; }
     const n = (a.d.match(/-?\d+(\.\d+)?/g) || []).map(Number);
     for (let i = 0; i + 1 < n.length; i += 2) add(n[i], n[i + 1]);
   }
-  return { x0, y0, x1, y1, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
+  return { x0, y0, x1, y1, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, w: x1 - x0, h: y1 - y0 };
 }
 
-// "Exploded" placement: each part sticker shrinks a little and drifts away from the body
-// center, so parts read as separate stickers sitting inside the mech's silhouette.
-const GAP_SCALE = 0.82;
-const DRIFT = 0.12;
-function partTransform(shapes) {
+const solidOf = (shapes) => shapes.filter(([, , t]) => !DECOR.has(t)).map(([tag, a]) => `<${tag} ${attrs(a)}/>`).join('');
+
+// One die-cut sticker: drop shadow, dark rim, white border, then the art with ink outlines.
+function sticker(shapes, pal, extra = '') {
+  const outline = solidOf(shapes);
+  let art = '';
+  for (const [tag, a, t] of shapes) {
+    if (t === 'line') art += `<${tag} ${attrs(a)} fill="none" stroke="${INK}" stroke-width=".65" stroke-linecap="round" opacity=".55"/>`;
+    else if (t === 'hi') art += `<${tag} ${attrs(a)} fill="#fff" opacity=".38"/>`;
+    else if (t === 'hiline') art += `<${tag} ${attrs(a)} fill="none" stroke="#fff" stroke-width=".9" stroke-linecap="round" opacity=".6"/>`;
+    else if (t === 'glow') art += `<${tag} ${attrs(a)} fill="${fillOf('eye', pal)}" opacity=".35"/>`;
+    else art += `<${tag} ${attrs(a)} fill="${fillOf(t, pal)}" stroke="${INK}" stroke-width="${OUT}" stroke-linejoin="round"${t === 'eye' ? ' class="eye"' : ''}/>`;
+  }
+  return `<g class="stk" ${extra}>
+    <g transform="translate(0 1.6)" fill="#05040F" stroke="#05040F" stroke-width="${RIM}" stroke-linejoin="round" opacity=".55">${outline}</g>
+    <g fill="${INK}" stroke="${INK}" stroke-width="${RIM}" stroke-linejoin="round">${outline}</g>
+    <g fill="#fff" stroke="#fff" stroke-width="${CUT}" stroke-linejoin="round">${outline}</g>
+    ${art}</g>`;
+}
+
+// ---------------------------------------------------------------- Frame palettes
+
+const PAL = {
+  // Brawler: crimson heavy armor, off-white trim, gold horns.
+  brakka: { arm: '#D2463A', armS: '#9C3229', sec: '#E7E1D5', secS: '#B9B1A2', trim: '#E4B23C', frm: '#3B4058', frmS: '#272B3D', eye: '#FFE45C' },
+  // Gunner: classic white armor with blue and yellow.
+  longshot: { arm: '#E7EAF1', armS: '#B3BBCC', sec: '#3D6ED6', secS: '#2B52A6', trim: '#F0C238', frm: '#3B4058', frmS: '#272B3D', eye: '#7CFFB2' },
+  // Tank: olive drab, sand panels, orange hazard trim, red mono-eye.
+  bastion: { arm: '#6E875A', armS: '#526644', sec: '#CDBE8F', secS: '#A49668', trim: '#E39A2E', frm: '#3B4058', frmS: '#272B3D', eye: '#FF4F64' },
+  // Trickster: dark violet stealth armor, purple panels, magenta blades.
+  specter: { arm: '#433C68', armS: '#2E294A', sec: '#9B7BFF', secS: '#7457D6', trim: '#FF5C9A', frm: '#23253A', frmS: '#171827', eye: '#FF8CF2' },
+};
+
+// ---------------------------------------------------------------- part drawings
+// Each part is drawn in its own local space, centered on (0, 0).
+
+const HEADS = {
+  // V-fin with twin eyes and a vented faceplate.
+  brakka: () => [
+    poly('trim', 0, -7, -15, -19, -12.5, -20, 0, -11, 12.5, -20, 15, -19),
+    poly('arm', -9, -11, 9, -11, 11, -4, 10, 6, 6, 10, -6, 10, -10, 6, -11, -4),
+    poly('armS', 2, -11, 9, -11, 11, -4, 10, 6, 6, 10, 2, 10),
+    poly('sec', -3, -11, 3, -11, 2.2, -5.5, -2.2, -5.5),
+    poly('red', -1.4, -10, 1.4, -10, 1.1, -7.5, -1.1, -7.5),
+    poly('frm', -7.5, -3.5, 7.5, -3.5, 6.5, 2.5, -6.5, 2.5),
+    ...pair('eye', -6.5, -2.5, -1.8, -1.5, -2.2, 1.2, -6, 0.8),
+    poly('sec', -4.2, 3.8, 4.2, 3.8, 3.2, 9.2, -3.2, 9.2),
+    line('M-1.6 5 L-1.6 8.2 M0 5 L0 8.2 M1.6 5 L1.6 8.2'),
+    poly('hi', -8, -10, -1, -10, -2, -7, -8.5, -6.5),
+  ],
+  // Sniper goggle visor with a long side antenna.
+  longshot: () => [
+    poly('trim', 5.5, -9, 13, -21, 14.5, -20.2, 8, -8),
+    poly('arm', -8, -11.5, 8, -11.5, 10, -4.5, 9, 7, 5, 10, -5, 10, -9, 7, -10, -4.5),
+    poly('armS', 2, -11.5, 8, -11.5, 10, -4.5, 9, 7, 5, 10, 2, 10),
+    poly('sec', -2.2, -11.5, 2.2, -11.5, 1.6, -5.5, -1.6, -5.5),
+    poly('frm', -9.5, -3.5, 9.5, -3.5, 8.6, 2.8, -8.6, 2.8),
+    poly('eye', -7.5, -2.2, 7.5, -2.2, 7, 1.6, -7, 1.6),
+    poly('hi', -6.5, -1.8, -1, -1.8, -1.5, -0.2, -6.5, -0.2),
+    C(-10.5, -0.5, 2.4, 'sec'),
+    poly('sec', -4, 4.2, 4, 4.2, 3, 9.2, -3, 9.2),
+    line('M-1.4 5.4 L-1.4 8.2 M1.4 5.4 L1.4 8.2'),
+    poly('hi', -7, -10.8, -1, -10.8, -2, -7.5, -7.6, -7),
+  ],
+  // Heavy dome helmet with a mono-eye rail.
+  bastion: () => [
+    P('M-11.5 -5 Q-11.5 -13.5 0 -14.5 Q11.5 -13.5 11.5 -5 L12.5 4.5 L8 9.5 L-8 9.5 L-12.5 4.5 Z', 'arm'),
+    P('M2 -14.3 Q11.5 -13.5 11.5 -5 L12.5 4.5 L8 9.5 L2 9.5 Z', 'armS'),
+    poly('sec', -1.8, -14.4, 1.8, -14.4, 1.3, -8, -1.3, -8),
+    poly('frm', -10.5, -4.5, 10.5, -4.5, 10.5, 1, -10.5, 1),
+    C(3.5, -1.8, 4.6, 'glow'), C(3.5, -1.8, 2.6, 'eye'),
+    poly('sec', -8, 3, 8, 3, 6, 9.5, -6, 9.5),
+    line('M-4 4.4 L-4 8.6 M-1.3 4.4 L-1.3 8.6 M1.3 4.4 L1.3 8.6 M4 4.4 L4 8.6'),
+    P('M-9 -9 Q-5 -12.6 0 -13', 'hiline'),
+  ],
+  // Sleek crested head with side fins and narrow eyes.
+  specter: () => [
+    poly('trim', -1.2, -10, -1.8, -24, 1.4, -24, 1.6, -10),
+    ...pair('sec', -8.5, -6, -16, -11, -15.2, -6.4, -8.8, -2),
+    poly('arm', 0, -12.5, 9, -6, 8, 4, 4, 9.5, -4, 9.5, -8, 4, -9, -6),
+    poly('armS', 0, -12.5, 9, -6, 8, 4, 4, 9.5, 0, 9.5),
+    poly('frm', -7.2, -2.4, 7.2, -2.4, 5.2, 2.2, -5.2, 2.2),
+    ...pair('eye', -6.2, -1.5, -1.2, -1, -1.6, 1, -4.8, 1.2),
+    poly('sec', -2.8, 5, 2.8, 5, 2, 9.5, -2, 9.5),
+    poly('hi', -1, -11, -7.5, -6, -6.5, -4, -1, -8),
+  ],
+};
+
+// Torsos: chest armor, collar, vents and the Core housing (Core sits at 0, -4).
+const TORSOS = {
+  brakka: () => [
+    poly('frm', -7, -21, 7, -21, 8, -15.5, -8, -15.5),
+    poly('arm', -23, -16, 23, -16, 25, -4, 18, 9, -18, 9, -25, -4),
+    poly('armS', 4, -16, 23, -16, 25, -4, 18, 9, 4, 9),
+    poly('sec', -7, -16, 7, -16, 6, 7, -6, 7),
+    ...pair('trim', -20, -11.5, -10, -11.5, -10, -3.5, -19, -1.5),
+    line('M-18 -9 L-11.5 -9 M-18 -6.5 L-11.5 -6.5 M11.5 -9 L18 -9 M11.5 -6.5 L18 -6.5'),
+    poly('frm', -13, 9, 13, 9, 11, 17, -11, 17),
+    line('M-6 10.5 L-6 15.5 M0 10.5 L0 15.5 M6 10.5 L6 15.5'),
+    poly('sec', -16, 17, 16, 17, 13.5, 22.5, -13.5, 22.5),
+    poly('hi', -22, -15, -8, -15, -9, -12, -22.5, -9),
+  ],
+  longshot: () => [
+    poly('frm', -6, -21, 6, -21, 7, -15.5, -7, -15.5),
+    poly('sec', -19, -16, 19, -16, 20.5, -5, 14, 7, -14, 7, -20.5, -5),
+    poly('secS', 4, -16, 19, -16, 20.5, -5, 14, 7, 4, 7),
+    poly('arm', -6, -16, 6, -16, 5, 6, -5, 6),
+    ...pair('trim', -17, -12, -9, -12, -9, -5, -16, -3.5),
+    line('M-15.5 -9.5 L-10.5 -9.5 M-15.5 -7 L-10.5 -7 M10.5 -9.5 L15.5 -9.5 M10.5 -7 L15.5 -7'),
+    poly('frm', -11, 7, 11, 7, 9.5, 15, -9.5, 15),
+    line('M-4.5 8.5 L-4.5 13.5 M0 8.5 L0 13.5 M4.5 8.5 L4.5 13.5'),
+    poly('arm', -13.5, 15, 13.5, 15, 11.5, 21, -11.5, 21),
+    poly('red', -2.2, 15.6, 2.2, 15.6, 1.8, 20, -1.8, 20),
+    poly('hi', -18, -15, -7, -15, -8, -12, -19, -9),
+  ],
+  bastion: () => [
+    poly('frm', -8, -21, 8, -21, 9, -15.5, -9, -15.5),
+    poly('arm', -25, -16, 25, -16, 26, 4, 20, 11, -20, 11, -26, 4),
+    poly('armS', 4, -16, 25, -16, 26, 4, 20, 11, 4, 11),
+    ...pair('sec', -23, -13, -9, -13, -9, 2, -22, 2),
+    line('M-21 -9 L-11 -9 M-21 -5 L-11 -5 M-21 -1 L-11 -1 M11 -9 L21 -9 M11 -5 L21 -5 M11 -1 L21 -1'),
+    poly('frm', -7.5, -15, 7.5, -15, 7, 9, -7, 9),
+    ...pair('trim', -24, 5, -18, 5, -18, 9, -22.5, 9),
+    poly('frm', -14, 11, 14, 11, 12, 18, -12, 18),
+    poly('sec', -17, 18, 17, 18, 14.5, 23, -14.5, 23),
+    poly('hi', -24, -15, -10, -15, -10, -12.5, -24.5, -11),
+  ],
+  specter: () => [
+    poly('frm', -5.5, -21, 5.5, -21, 6.5, -15.5, -6.5, -15.5),
+    poly('arm', 0, -17, 20, -12, 15, 3, 6, 11, -6, 11, -15, 3, -20, -12),
+    poly('armS', 0, -17, 20, -12, 15, 3, 6, 11, 0, 11),
+    ...pair('sec', -18, -10.5, -7, -9, -8, -1, -14, 1),
+    ...pair('trim', -6, -15, -2, -15.6, -3, 6, -4.6, 6),
+    poly('frm', -9, 11, 9, 11, 7, 17, -7, 17),
+    poly('sec', -10.5, 17, 10.5, 17, 6, 23, -6, 23),
+    poly('hi', -1, -16, -18, -11.5, -16.5, -8.5, -1, -12),
+  ],
+};
+
+// Left arms (right arms are mirrored): shoulder pauldron, upper arm, elbow, forearm, hand.
+const ARMS = {
+  brakka: () => [
+    poly('arm', -14, -24, 10, -24, 14, -15, 11, -8, -11, -8, -15, -15),
+    poly('armS', 0, -24, 10, -24, 14, -15, 11, -8, 0, -8),
+    poly('sec', -13, -15.5, 13, -15.5, 12, -12, -13.5, -12),
+    poly('frm', -5, -8, 5, -8, 4.5, 1, -4.5, 1),
+    C(0, 2.5, 3.6, 'frmS'),
+    poly('arm', -9, 4, 9, 4, 10.5, 17, -10.5, 17),
+    poly('armS', 1.5, 4, 9, 4, 10.5, 17, 1.5, 17),
+    poly('trim', -9.6, 9, 9.6, 9, 10, 11.5, -10, 11.5),
+    poly('frm', -7, 17, 7, 17, 8, 25, -8, 25),
+    line('M-3.5 19 L-3.5 23.5 M0 19 L0 23.5 M3.5 19 L3.5 23.5'),
+    poly('hi', -13, -23, -1, -23, -2, -19, -14, -17),
+  ],
+  longshot: () => [
+    poly('arm', -10.5, -24, 8, -24, 11, -16, 9, -9, -9, -9, -11.5, -16),
+    poly('armS', 0, -24, 8, -24, 11, -16, 9, -9, 0, -9),
+    poly('sec', -10.5, -16.5, 11, -16.5, 10.2, -13, -10.8, -13),
+    poly('frm', -4, -9, 4, -9, 3.6, 1, -3.6, 1),
+    C(0, 2.5, 3, 'frmS'),
+    poly('arm', -6.5, 4.5, 6.5, 4.5, 7.5, 17, -7.5, 17),
+    poly('armS', 1, 4.5, 6.5, 4.5, 7.5, 17, 1, 17),
+    poly('sec', -7, 13, 7, 13, 7.4, 16, -7.4, 16),
+    poly('frm', -5.5, 17, 5.5, 17, 6, 24, -6, 24),
+    line('M-2 18.5 L-2 22.5 M1.4 18.5 L1.4 22.5'),
+    poly('hi', -9.5, -23, -1, -23, -2, -19.5, -10.5, -18),
+  ],
+  bastion: () => [
+    poly('arm', -16, -25, 12, -25, 15, -12, 11, -6, -13, -6, -17, -12),
+    poly('armS', 0, -25, 12, -25, 15, -12, 11, -6, 0, -6),
+    ...[-12, -4, 4].map((x) => R(x, -21, 5, 3, 'sec', 0.8)),
+    poly('trim', -16.5, -10, 15, -10, 14, -7.5, -15.5, -7.5),
+    poly('frm', -5.5, -6, 5.5, -6, 5, 2, -5, 2),
+    C(0, 3.5, 3.8, 'frmS'),
+    poly('arm', -9.5, 5, 9.5, 5, 10.5, 18, -10.5, 18),
+    poly('armS', 1.5, 5, 9.5, 5, 10.5, 18, 1.5, 18),
+    line('M-8 11 L8 11'),
+    poly('frm', -7.5, 18, 7.5, 18, 8.5, 25.5, -8.5, 25.5),
+    poly('hi', -15, -24, -1, -24, -2, -19, -16, -16),
+  ],
+  specter: () => [
+    poly('arm', -10, -23, 7, -24, 12, -17, 9, -10, -8, -10, -12, -16),
+    poly('armS', 0, -23.6, 7, -24, 12, -17, 9, -10, 0, -10),
+    poly('sec', -13, -19, -19, -25, -17, -19, -12, -14),
+    poly('frm', -3.6, -10, 3.6, -10, 3.2, 1, -3.2, 1),
+    C(0, 2.5, 2.8, 'frmS'),
+    poly('arm', -6, 4.5, 6, 4.5, 6, 17, -6, 17),
+    poly('armS', 1, 4.5, 6, 4.5, 6, 17, 1, 17),
+    poly('trim', -6, 6, -11, 26, -8.5, 26, -3.5, 12),
+    poly('frm', -5, 17, 5, 17, 5.5, 23.5, -5.5, 23.5),
+    poly('hi', -9, -22.5, -1, -23, -2, -19.5, -10, -18),
+  ],
+};
+
+// Legs: hip, thighs, knees, shins and feet as a single sticker.
+function legPair({ w = 7, foot = 10, knee = 'arm', thighW = 5.5, stance = 9.5 }) {
+  const leg = (s) => {
+    const X = (v) => s * stance + s * v;
+    return [
+      poly('frm', X(-thighW), -20, X(thighW), -20, X(thighW - 0.8), -7, X(-thighW + 0.8), -7),
+      poly(knee, X(-w - 0.5), -8, X(w + 0.5), -8, X(w - 0.5), -1, X(-w + 0.5), -1),
+      poly('arm', X(-w), -1, X(w), -1, X(w + 1), 16, X(-w - 1), 16),
+      poly('armS', X(1), -1, X(w), -1, X(w + 1), 16, X(1), 16),
+      poly('sec', X(-w + 0.5), 6, X(w - 0.5), 6, X(w - 0.2), 9, X(-w + 0.2), 9),
+      poly('frmS', X(-w - 1.5), 16, X(w + 0.5), 16, X(foot), 23, X(-foot + 1), 23),
+      poly('hi', X(-w + 0.5), 0, X(-1), 0, X(-1.4), 5, X(-w), 5),
+    ];
+  };
+  return [poly('frm', -9, -25, 9, -25, 10, -19, -10, -19), ...leg(-1), ...leg(1)];
+}
+const LEGS = {
+  brakka: () => legPair({ w: 8, foot: 11.5, knee: 'sec', thighW: 6, stance: 10.5 }),
+  longshot: () => legPair({ w: 6.5, foot: 9.5, knee: 'sec', thighW: 5, stance: 8.5 }),
+  bastion: () => legPair({ w: 8.5, foot: 12.5, knee: 'trim', thighW: 6.5, stance: 11 }),
+  specter: () => legPair({ w: 5.5, foot: 8.5, knee: 'sec', thighW: 4.5, stance: 7.5 }),
+};
+
+// Where each part sits in the 200x200 mech box: [x, y, silhouette scale, sticker size within the slot].
+const LAYOUT = {
+  brakka: { head: [100, 32, 1.25, 0.9], torso: [100, 76, 1.75, 0.6], armL: [44, 84, 1.7, 0.62], legs: [100, 148, 1.75, 0.58] },
+  longshot: { head: [100, 30, 1.2, 0.9], torso: [100, 74, 1.75, 0.62], armL: [50, 82, 1.7, 0.64], legs: [100, 148, 1.85, 0.58] },
+  bastion: { head: [100, 34, 1.2, 0.9], torso: [100, 78, 1.75, 0.58], armL: [40, 84, 1.7, 0.62], legs: [100, 150, 1.7, 0.58] },
+  specter: { head: [100, 30, 1.2, 0.9], torso: [100, 74, 1.8, 0.6], armL: [50, 80, 1.75, 0.62], legs: [100, 148, 1.9, 0.58] },
+};
+
+function partShapes(frame, k) {
+  if (k === 'head') return HEADS[frame]();
+  if (k === 'torso') return TORSOS[frame]();
+  if (k === 'legs') return LEGS[frame]();
+  return ARMS[frame]();
+}
+
+function slotOf(frame, k) {
+  const L = LAYOUT[frame];
+  if (k === 'armR') { const [x, y, s, kk] = L.armL; return [200 - x, y, s, kk, -1]; }
+  const [x, y, s, kk] = L[k];
+  return [x, y, s, kk, 1];
+}
+
+// ---------------------------------------------------------------- items & attachments
+// Items are drawn in a local box roughly -16..16. Weapons point down (held along the forearm).
+
+const ITEMS = {
+  pulse_rifle: () => [
+    poly('gun', -3, -15, 3, -15, 3.5, -4, -3.5, -4),
+    poly('steel', -5, -6, 5, -6, 5, 6, -5, 6),
+    poly('steelS', 1.5, -6, 5, -6, 5, 6, 1.5, 6),
+    R(-7.5, -3, 3, 6, 'gun', 0.6),
+    poly('gun', -2, 6, 2, 6, 2, 17, -2, 17),
+    R(-2.8, 15, 5.6, 3, 'warn', 0.6),
+    poly('sec', 5, -2, 9, -1, 9, 3, 5, 3),
+    line('M-3 -1 L3 -1 M-3 2 L3 2'),
+  ],
+  twin_autocannon: () => [
+    poly('gun', -7, -14, 7, -14, 7, -3, -7, -3),
+    C(0, -8.5, 4.2, 'steel'), C(0, -8.5, 1.6, 'gunS'),
+    poly('steel', -7.5, -3, 7.5, -3, 7, 5, -7, 5),
+    poly('steelS', 1, -3, 7.5, -3, 7, 5, 1, 5),
+    poly('gun', -5.5, 5, -2, 5, -2, 18, -5.5, 18),
+    poly('gun', 2, 5, 5.5, 5, 5.5, 18, 2, 18),
+    R(-6, 16, 4.5, 2.6, 'warn', 0.5), R(1.5, 16, 4.5, 2.6, 'warn', 0.5),
+  ],
+  rail_lance: () => [
+    poly('gun', -4, -18, 4, -18, 4.5, -8, -4.5, -8),
+    poly('sec', -5.5, -9, 5.5, -9, 5.5, -3, -5.5, -3),
+    poly('steel', -3, -3, 3, -3, 2.4, 20, -2.4, 20),
+    poly('steelS', 0.6, -3, 3, -3, 2.4, 20, 0.6, 20),
+    ...[1, 6, 11].map((y) => R(-4.2, y, 8.4, 2.4, 'gun', 0.6)),
+    poly('beam', -1.4, 20, 1.4, 20, 0, 24),
+    line('M-2 -14 L2 -14'),
+  ],
+  sniper_pistol: () => [
+    poly('gun', -4.5, -12, 4.5, -12, 4.5, -2, -4.5, -2),
+    poly('gun', 1, -2, 5, -2, 6, 5, 2, 5),
+    poly('steel', -2, -2, 1.5, -2, 1.5, 15, -2, 15),
+    poly('steelS', -9, -11, -4.5, -11, -4.5, -7, -9, -7),
+    C(-6.5, -9, 2.6, 'glass'),
+    line('M-3 -8 L3 -8'),
+  ],
+  missile_pod: () => [
+    poly('steel', -13, -9, 13, -9, 12, 9, -12, 9),
+    poly('steelS', 4, -9, 13, -9, 12, 9, 4, 9),
+    ...[-8, 0, 8].flatMap((x) => [C(x, -3.5, 2.8, 'gunS'), C(x, -3.5, 1.5, 'red'), C(x, 4, 2.8, 'gunS'), C(x, 4, 1.5, 'red')]),
+    poly('warn', -13, -9, -7, -9, -9, -6, -13, -6),
+  ],
+  headbutt_crest: () => [
+    poly('trim', 0, -4, -13, -15, -10.5, -16, 0, -8, 10.5, -16, 13, -15),
+    poly('steel', -6, -5, 6, -5, 4.5, 6, -4.5, 6),
+    poly('red', -2, -3, 2, -3, 1.4, 3, -1.4, 3),
+  ],
+  emp_spike: () => [
+    poly('gun', -4, 2, 4, 2, 5, 9, -5, 9),
+    poly('steel', -1.6, -13, 1.6, -13, 2.2, 2, -2.2, 2),
+    C(0, -14, 3.4, 'glass'),
+    P('M-7 -14 Q0 -21 7 -14', 'hiline'),
+  ],
+  ghost_blade: () => [
+    poly('gun', -3, -16, 3, -16, 3, -6, -3, -6),
+    R(-4.5, -7.5, 9, 3, 'trim', 0.6),
+    poly('beamP', -2, -4.5, 2, -4.5, 1.2, 20, -1.2, 20),
+    P('M-0.4 -3 L-0.2 17', 'hiline'),
+  ],
+  shield_bash: () => [
+    ...[-7, 0, 7].map((x) => poly('steel', x - 1.6, -13, x + 1.6, -13, x, -19)),
+    poly('sec', -10, -14, 10, -14, 11, 2, 0, 12, -11, 2),
+    poly('secS', 1, -14, 10, -14, 11, 2, 1, 11),
+    poly('steel', -4, -9, 4, -9, 3, 4, -3, 4),
+  ],
+  tower_shield: () => [
+    poly('sec', -11, -18, 11, -18, 12, 6, 0, 18, -12, 6),
+    poly('secS', 1, -18, 11, -18, 12, 6, 1, 17),
+    poly('trim', -2, -14, 2, -14, 2, 10, -2, 10),
+    poly('trim', -8, -4, 8, -4, 8, -0.5, -8, -0.5),
+    poly('hi', -10, -17, -2, -17, -2.5, -13, -10.5, -12),
+  ],
+  aegis_dome: () => [
+    P('M-13 2 Q-13 -13 0 -14 Q13 -13 13 2 Z', 'glass'),
+    P('M-9 -6 Q-4 -11 2 -11', 'hiline'),
+    poly('steel', -15, 2, 15, 2, 13, 8, -13, 8),
+    poly('steelS', 2, 2, 15, 2, 13, 8, 2, 8),
+    C(0, 5, 1.6, 'mint'),
+  ],
+  wrecking_fists: () => [
+    ...[-6, 0, 6].map((x) => poly('steel', x - 2, 11, x + 2, 11, x, 18)),
+    poly('arm', -9, -12, 9, -12, 11, 4, -11, 4),
+    poly('armS', 1, -12, 9, -12, 11, 4, 1, 4),
+    poly('frm', -10, 4, 10, 4, 9, 12, -9, 12),
+    line('M-5 -9 L-5 1 M0 -9 L0 1 M5 -9 L5 1'),
+  ],
+  hydraulic_fist: () => [
+    R(-12, -8, 3, 9, 'warn', 0.6), R(9, -8, 3, 9, 'warn', 0.6),
+    poly('steel', -9, -11, 9, -11, 10, 3, -10, 3),
+    poly('steelS', 1, -11, 9, -11, 10, 3, 1, 3),
+    poly('gun', -8, 3, 8, 3, 7, 11, -7, 11),
+    line('M-4 4.5 L-4 9.5 M0 4.5 L0 9.5 M4 4.5 L4 9.5'),
+  ],
+  piston_boots: () => [
+    poly('orange', -9, 11, -3, 11, -6, 17),
+    poly('orange', 1, 11, 7, 11, 4, 17),
+    poly('steel', -9, -10, 6, -10, 7, 6, -10, 6),
+    poly('steelS', 0, -10, 6, -10, 7, 6, 0, 6),
+    poly('gun', -12, 6, 9, 6, 12, 12, -12, 12),
+    R(-7, -6, 10, 2.5, 'warn', 0.5),
+  ],
+  phase_treads: () => [
+    poly('sec', -2, -14, 12, -8, 9, -4, -2, -7),
+    poly('sec', -2, -4, 12, 2, 9, 6, -2, 3),
+    poly('beamP', -7, 11, -1, 11, -4, 17),
+    poly('gun', -8, -12, 0, -12, 0, 12, -8, 12),
+  ],
+  scope_visor: () => [
+    poly('gun', -13, -4, 13, -4, 11, 5, -11, 5),
+    poly('glass', -11, -2.5, 11, -2.5, 9.5, 3.5, -9.5, 3.5),
+    poly('hi', -9.5, -2, -1, -2, -1.5, 0, -9.5, 0),
+    C(13, -6, 3, 'sec'), C(13, -6, 1.2, 'red'),
+  ],
+  oracle_eye: () => [
+    poly('steel', -3, -12, 3, -12, 2, -8, -2, -8),
+    poly('gun', -12, 0, 0, -9, 12, 0, 0, 9),
+    C(0, 0, 5.5, 'sec'), C(0, 0, 3, 'beamP'), C(0, 0, 1.2, 'ink'),
+  ],
+  scrap_plating: () => [
+    poly('steel', -12, -9, 12, -10, 11, 9, -11, 10),
+    poly('steelS', 2, -9.6, 12, -10, 11, 9, 2, 9.6),
+    ...[[-8, -6], [8, -6.5], [-7.5, 6.5], [7.5, 6]].map(([x, y]) => C(x, y, 1.2, 'gun')),
+    line('M-9 0 L9 -0.5'),
+  ],
+  reinforced_plating: () => [
+    poly('steel', -12, -11, 12, -11, 12, 11, -12, 11),
+    poly('steelS', 2, -11, 12, -11, 12, 11, 2, 11),
+    poly('warn', -12, -11, -4, -11, -12, -3),
+    poly('warn', 4, 11, 12, 11, 12, 3),
+    ...[[-8, 7], [8, -7]].map(([x, y]) => C(x, y, 1.3, 'gun')),
+    poly('gun', -3, -3, 3, -3, 3, 3, -3, 3),
+  ],
+  repair_pod: () => [
+    P('M-9 -4 Q-9 -12 0 -12 Q9 -12 9 -4 L9 6 Q9 12 0 12 Q-9 12 -9 6 Z', 'white'),
+    P('M1 -12 Q9 -12 9 -4 L9 6 Q9 12 1 12 Z', 'steel'),
+    poly('mint', -2, -7, 2, -7, 2, -2, 7, -2, 7, 2, 2, 2, 2, 7, -2, 7, -2, 2, -7, 2, -7, -2, -2, -2),
+  ],
+  rebuild_kit: () => [
+    poly('gun', -4, -11, 4, -11, 4, -6, -4, -6),
+    poly('warn', -12, -6, 12, -6, 12, 11, -12, 11),
+    poly('orange', 3, -6, 12, -6, 12, 11, 3, 11),
+    poly('gun', -12, -6, 12, -6, 12, -2, -12, -2),
+    C(0, 4.5, 4, 'gun'), C(0, 4.5, 1.6, 'steel'),
+  ],
+  core_patch: () => [
+    poly('gun', -6, -13, 6, -13, 6, -9, -6, -9),
+    poly('glass', -7, -9, 7, -9, 7, 9, -7, 9),
+    C(0, 0, 4.5, 'warn'), C(-1.4, -1.4, 1.4, 'white'),
+    poly('gun', -6, 9, 6, 9, 6, 13, -6, 13),
+  ],
+  drone_escort: () => [
+    R(-15, -7, 8, 2.4, 'gun', 1), R(7, -7, 8, 2.4, 'gun', 1),
+    poly('gun', -8, -5, -6, -5, -6, -2, -8, -2), poly('gun', 6, -5, 8, -5, 8, -2, 6, -2),
+    poly('gun', -3, 3, 3, 3, 2, 8, -2, 8),
+    poly('steel', -6, -4, 6, -4, 8, 3, -8, 3),
+    poly('steelS', 1, -4, 6, -4, 8, 3, 1, 3),
+    C(0, 0, 2.2, 'mint'),
+  ],
+  energy_cell: () => [
+    poly('gun', -3.5, -14, 3.5, -14, 3.5, -11, -3.5, -11),
+    poly('steel', -7, -11, 7, -11, 7, 13, -7, 13),
+    poly('steelS', 2, -11, 7, -11, 7, 13, 2, 13),
+    poly('warn', 1.5, -7, -4, 2, -0.5, 2, -2, 9, 4, -0.5, 0.5, -0.5),
+  ],
+  rush_order: () => [
+    poly('gun', -2, -13, 2, -13, 2, -10, -2, -10),
+    poly('warn', 8, -12, 14, -8, 11, -5),
+    C(0, 1, 11, 'white'), C(0, 1, 8, 'steel'),
+    P('M0 1 L0 -5 M0 1 L4.5 3.5', 'line'),
+  ],
+  scavenge: () => [
+    poly('steelS', -12, 2, 4, -6, 12, 2, -4, 10),
+    poly('gun', -10, -2, -2, -10, 4, -6, -4, 2),
+    C(6, -6, 4.5, 'warn'), C(6, -6, 1.6, 'gun'),
+    poly('steel', -6, 4, 2, 0, 6, 4, -2, 8),
+  ],
+  adrenal_surge: () => [
+    poly('red', -8, -6, 0, -14, 8, -6, 4, -6, 4, 2, -4, 2, -4, -6),
+    poly('orange', -8, 4, 0, -4, 8, 4, 4, 4, 4, 12, -4, 12, -4, 4),
+  ],
+  brace: () => [
+    poly('mint', -10, -12, 10, -12, 10, 2, 0, 12, -10, 2),
+    poly('gun', -5, -6, 5, -6, 5, -2, -5, -2),
+    poly('gun', -2, -9, 2, -9, 2, 1, -2, 1),
+  ],
+  sabotage: () => [
+    poly('warn', -10, 7, -4, 7, -7, 13), poly('warn', 4, 7, 10, 7, 7, 13),
+    poly('gun', -10, -8, 10, -8, 10, 8, -10, 8),
+    C(0, 0, 4.5, 'red'),
+    P('M-3 -3 L3 3 M3 -3 L-3 3', 'line'),
+  ],
+};
+
+// UI-only icons (tool buttons).
+const UI_ICONS = { surge: ITEMS.adrenal_surge, clock: ITEMS.rush_order };
+
+function itemPalette(id) {
+  const c = id && CARDS[id];
+  return c && c.frame ? PAL[c.frame] : PAL.longshot;
+}
+
+function fitted(shapes, pad = 6) {
   const b = bbox(shapes);
-  const dx = (b.cx - 100) * DRIFT, dy = (b.cy - 105) * DRIFT;
-  return { str: `translate(${(b.cx + dx).toFixed(1)} ${(b.cy + dy).toFixed(1)}) scale(${GAP_SCALE}) translate(${-b.cx.toFixed(1)} ${-b.cy.toFixed(1)})`, b };
+  const size = Math.max(b.w, b.h) + pad * 2;
+  return `${(b.cx - size / 2).toFixed(1)} ${(b.cy - size / 2).toFixed(1)} ${size.toFixed(1)} ${size.toFixed(1)}`;
 }
 
-function silhouette(body) {
-  const solid = ['legs', 'torso', 'armL', 'armR', 'head'].flatMap((k) => body[k].filter(([, , t]) => !DECOR.includes(t)));
-  const shapes = solid.map(([tag, a]) => `<${tag} ${attrs(a)}/>`).join('');
-  return `<g class="silhouette" pointer-events="none">
-    <g fill="#3E3A78" stroke="#3E3A78" stroke-width="15" stroke-linejoin="round">${shapes}</g>
-    <g fill="#1A1838" stroke="#1A1838" stroke-width="11" stroke-linejoin="round">${shapes}</g>
-    <g fill="none" stroke="#2C2958" stroke-width="1.5" stroke-dasharray="3 4">${shapes}</g></g>`;
+// A card as a compact sticker.
+export function cardSticker(id) {
+  const shapes = (ITEMS[id] || ITEMS.scavenge)();
+  return `<svg class="icon item" viewBox="${fitted(shapes)}" aria-hidden="true">${sticker(shapes, itemPalette(id))}</svg>`;
+}
+export const cardIcon = cardSticker;
+export const upgradeSticker = cardSticker;
+
+export function iconSVG(name, cls = '') {
+  const shapes = (UI_ICONS[name] || ITEMS.scavenge)();
+  return `<svg class="icon ${cls}" viewBox="${fitted(shapes, 5)}" aria-hidden="true">${sticker(shapes, PAL.longshot)}</svg>`;
+}
+
+// Where an attachment sticker goes on a limb, in the 200-box.
+function attachPoint(frame, k) {
+  const [x, y, , , dir] = slotOf(frame, k);
+  if (k === 'head') return [x + 20 * dir, y - 4, 0.8];
+  if (k === 'legs') return [x, y + 4, 0.95];
+  return [x + 4 * dir, y + 30, 0.95];
+}
+function platePoint(frame, k) {
+  const [x, y, , , dir] = slotOf(frame, k);
+  if (k === 'head') return [x - 16 * dir, y + 6, 0.55];
+  if (k === 'legs') return [x - 24, y - 16, 0.7];
+  return [x - 10 * dir, y - 22, 0.7];
+}
+
+function itemAt(id, x, y, s, extra = '', flipX = false) {
+  const shapes = (ITEMS[id] || ITEMS.scavenge)();
+  return `<g transform="translate(${x} ${y}) scale(${flipX ? -s : s} ${s})" ${extra}>${sticker(shapes, itemPalette(id))}</g>`;
 }
 
 function countdownBadge(x, y, n) {
-  return `<g class="cd-badge" transform="translate(${x} ${y})"><circle r="15" fill="${INK}"/><circle r="12.5" fill="#fff"/>
-    <circle r="10" fill="#FFC929" stroke="${INK}" stroke-width="1.8"/><text y="5" text-anchor="middle" font-family="Oxanium, sans-serif" font-weight="800" font-size="14" fill="${INK}">${n}</text></g>`;
+  return `<g class="cd-badge" transform="translate(${x} ${y})"><circle r="10.5" fill="${INK}"/><circle r="8.6" fill="#fff"/>
+    <circle r="6.9" fill="#F2C230" stroke="${INK}" stroke-width="1.2"/><text y="3.6" text-anchor="middle" font-family="Oxanium, sans-serif" font-weight="800" font-size="10" fill="${INK}">${n}</text></g>`;
 }
 
-let uidCounter = 0;
+// ---------------------------------------------------------------- the mech
 
-// player: a game player object (or null for a clean showcase render)
-// opts.slap = limb whose newest upgrade just landed; opts.peel = limb that was just destroyed
-// opts.pending = this player's Workshop builds aimed at limbs (shown as ghost stickers + countdown)
+// player: a game player object (or null for a showcase render)
+// opts.slap = limb whose newest upgrade just landed; opts.peel = limb just destroyed
+// opts.pending = this player's Workshop builds aimed at limbs (ghost sticker + countdown)
 export function mechSVG(frameId, player = null, opts = {}) {
-  const body = BODIES[frameId];
+  const pal = PAL[frameId];
   const f = FRAMES[frameId];
-  const uid = `m${++uidCounter}`;
-  const pal = { main: f.color, dark: shade(f.color, -0.3), light: shade(f.color, 0.45), accent: f.accent, glow: GLOW[frameId] };
-  const order = ['legs', 'torso', 'armL', 'armR', 'head'];
-  let out = '';
-  let clipDefs = '';
+  const order = ['legs', 'armL', 'armR', 'torso', 'head'];
   const pending = opts.pending || [];
+  let sil = '', parts = '', attach = '';
+  const rim = mix(pal.sec, '#2B2858', 0.72);
 
   for (const k of order) {
+    const shapes = partShapes(frameId, k);
+    const [x, y, s, kk, dir] = slotOf(frameId, k);
     const ls = player && k !== 'torso' ? player.limbs[k] : null;
     const destroyed = ls && !ls.alive;
-    const isLimb = k !== 'torso';
-    const { str: place, b } = partTransform(body[k]);
     const loose = ls && ls.alive && ls.hp <= ls.max / 2;
-    const tilt = loose ? ({ armL: -6, armR: 6, head: 5, legs: -3 }[k]) : 0;
-    const tf = `transform="${place}${tilt ? ` rotate(${tilt} ${b.cx} ${b.cy})` : ''}"`;
-    const partCls = isLimb ? `part limb ${destroyed ? 'destroyed' : ''} ${loose ? 'loose' : ''}` : 'part torso';
-    const myBuilds = pending.filter((w) => w.target === k);
+    const place = `translate(${x} ${y}) scale(${s * dir} ${s})`;
+    const solid = solidOf(shapes);
+
+    // The silhouette slot doubles as the tap / drop target for this part.
+    const cls = k === 'torso' ? 'part torso' : `part limb ${destroyed ? 'destroyed' : ''} ${loose ? 'loose' : ''}`;
+    sil += `<g class="${cls}" data-limb="${k}">
+      <g transform="${place}" class="slot-shape ${destroyed ? 'empty' : ''}">
+        <g fill="${rim}" stroke="${rim}" stroke-width="${(5 / s).toFixed(2)}" stroke-linejoin="round">${solid}</g>
+        <g fill="#1B1938" stroke="#1B1938" stroke-width="${(1.4 / s).toFixed(2)}" stroke-linejoin="round">${solid}</g>
+        ${destroyed ? `<g fill="none" stroke="#E5484D" stroke-opacity=".55" stroke-width="${(1.2 / s).toFixed(2)}" stroke-dasharray="${(3 / s).toFixed(2)} ${(3 / s).toFixed(2)}">${solid}</g>` : ''}
+      </g>`;
 
     if (destroyed) {
-      // Empty slot in the silhouette: a faint outline you can drop a Rebuild Kit on.
-      const slot = body[k].filter(([, , t]) => !DECOR.includes(t)).map(([tag, a]) => `<${tag} ${attrs(a)}/>`).join('');
-      out += `<g class="${partCls}" data-limb="${k}" ${tf}><g class="empty-slot" fill="#1A1838" stroke="#4E4988" stroke-width="2" stroke-dasharray="5 4" stroke-linejoin="round">${slot}</g>`;
-      for (const w of myBuilds) out += countdownBadge(b.cx, b.cy, w.timer);
-      out += '</g>';
-      if (opts.peel === k) out += `<g class="peel" style="transform-origin:${b.cx}px ${b.cy}px"><g ${tf}>${sticker(body[k], pal)}</g></g>`;
+      sil += `<g transform="translate(${x} ${y})"><circle r="6.5" fill="${INK}" stroke="#E5484D" stroke-width="1.4"/><path d="M-2.6 -2.6L2.6 2.6M2.6 -2.6L-2.6 2.6" stroke="#E5484D" stroke-width="1.8" stroke-linecap="round"/></g>`;
+      for (const w of pending.filter((p) => p.target === k)) sil += countdownBadge(x + 12, y - 10, w.timer);
+      sil += '</g>';
+      if (opts.peel === k) parts += `<g class="peel" style="transform-origin:${x}px ${y}px"><g transform="translate(${x} ${y}) scale(${s * kk * dir} ${s * kk})">${sticker(shapes, pal)}</g></g>`;
       continue;
     }
+    sil += '</g>';
 
-    const clipId = `c${uid}${k}`;
-    clipDefs += `<clipPath id="${clipId}">${body[k].filter(([, , t]) => !DECOR.includes(t)).map(([tag, a]) => `<${tag} ${attrs(a)}/>`).join('')}</clipPath>`;
-    let inner = sticker(body[k], pal, { cls: 'part-stk' });
-    inner += `<rect x="0" y="0" width="200" height="200" fill="url(#g${uid})" clip-path="url(#${clipId})" pointer-events="none"/>`;
+    // The part sticker, small inside its slot.
+    const tilt = loose ? ({ armL: -7, armR: 7, head: 6, legs: -3 }[k]) : 0;
+    let inner = sticker(shapes, pal);
+    if (loose) inner += `<g stroke="${INK}" stroke-width=".8" fill="none" stroke-linecap="round" opacity=".75"><path d="M-4 -6 L0 -1 L-2 2 L3 7"/><path d="M3 -7 L5 -4"/></g>`;
+    if (k === 'torso') {
+      const pct = player ? player.core / 20 : 1;
+      const glow = pct >= 0.75 ? '#F2C230' : pct >= 0.4 ? '#FF8A3D' : '#E5484D';
+      const exposed = player && ['head', 'armL', 'armR', 'legs'].filter((q) => !player.limbs[q].alive).length >= 2;
+      inner += `<g class="core-gem ${exposed ? 'exposed' : ''}" data-limb="core">
+        ${exposed ? '<circle cx="0" cy="-4" r="9.5" fill="none" stroke="#E5484D" stroke-width="1.4" stroke-dasharray="2.5 2.5" class="core-ring"/>' : ''}
+        <circle cx="0" cy="-4" r="5.6" fill="${INK}"/><circle cx="0" cy="-4" r="4.4" fill="#fff"/>
+        <circle cx="0" cy="-4" r="4.4" fill="${glow}" class="core-glow"/><circle cx="-1.5" cy="-5.5" r="1.3" fill="#fff" opacity=".9"/></g>`;
+    }
+    parts += `<g class="pstk" data-limb="${k}" transform="translate(${x} ${y}) scale(${(s * kk * dir).toFixed(3)} ${(s * kk).toFixed(3)})${tilt ? ` rotate(${tilt})` : ''}">${inner}</g>`;
 
+    // Attachments: upgrade and plating stickers stuck onto the part sticker.
     if (ls) {
-      if (loose) inner += scuffs(k, body);
-      if (ls.plating) inner += sticker(platingShapes(k, body), pal, { cls: `up plating ${opts.slap === k && opts.slapKind === 'plating' ? 'slap' : ''}` });
-      if (ls.mount) {
-        const [mxp, myp] = body.mounts[k];
-        inner += sticker(mountShapes(ls.mount.id, k), pal, { cls: `up mount ${opts.slap === k && opts.slapKind !== 'plating' ? 'slap' : ''}`, attrsStr: `transform="translate(${mxp} ${myp})"` });
+      if (ls.plating) {
+        const [px, py, ps] = platePoint(frameId, k);
+        attach += itemAt(ls.plating.id, px, py, ps, `class="up ${opts.slap === k && opts.slapKind === 'plating' ? 'slap' : ''}"`);
       }
-      // Builds in progress for this limb: ghost of the incoming sticker + countdown.
-      myBuilds.forEach((w, i) => {
+      if (ls.mount) {
+        const [ax, ay, as] = attachPoint(frameId, k);
+        attach += itemAt(ls.mount.id, ax, ay, as, `class="up ${opts.slap === k && opts.slapKind !== 'plating' ? 'slap' : ''}"`, dir < 0);
+      }
+      pending.filter((p) => p.target === k).forEach((w) => {
         const c = CARDS[w.id];
-        const [mxp, myp] = body.mounts[k];
-        if (c.type === 'weapon' || c.type === 'boost') {
-          inner += `<g class="pending-up" opacity=".5">${sticker(mountShapes(w.id, k), pal, { attrsStr: `transform="translate(${mxp} ${myp})"` })}</g>`;
-        } else if (c.type === 'plating') {
-          inner += `<g class="pending-up" opacity=".5">${sticker(platingShapes(k, body), pal)}</g>`;
-        }
-        inner += countdownBadge(b.cx + (i ? 14 : 0), b.cy, w.timer);
+        const [ax, ay, as] = c.type === 'plating' ? platePoint(frameId, k) : attachPoint(frameId, k);
+        if (c.type === 'weapon' || c.type === 'boost' || c.type === 'plating') attach += `<g class="pending-up" opacity=".45">${itemAt(w.id, ax, ay, as, '', dir < 0)}</g>`;
+        attach += countdownBadge(ax + 9, ay - 9, w.timer);
       });
     }
-    if (k === 'torso') {
-      const [cx, cy, r] = body.core;
-      const pct = player ? player.core / 20 : 1;
-      const glow = pct >= 0.75 ? '#FFC929' : pct >= 0.4 ? '#FF8A3D' : '#FF4F64';
-      const exposed = player && ['head', 'armL', 'armR', 'legs'].filter((x) => !player.limbs[x].alive).length >= 2;
-      inner += `<g class="core-gem ${exposed ? 'exposed' : ''}" data-limb="core">
-        ${exposed ? `<circle cx="${cx}" cy="${cy}" r="${r + 8}" fill="none" stroke="#FF4F64" stroke-width="2.5" stroke-dasharray="4 4" class="core-ring"/>` : ''}
-        <circle cx="${cx}" cy="${cy}" r="${r + 3.5}" fill="${INK}"/><circle cx="${cx}" cy="${cy}" r="${r}" fill="#fff"/>
-        <circle cx="${cx}" cy="${cy}" r="${r}" fill="${glow}" class="core-glow"/>
-        <path d="M${cx - r * 0.55} ${cy - r * 0.15} A${r * 0.6} ${r * 0.6} 0 0 1 ${cx + r * 0.1} ${cy - r * 0.6}" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" opacity=".9"/></g>`;
-    }
-    out += `<g class="${partCls}" data-limb="${k}" ${tf}>${inner}</g>`;
   }
 
   let drones = '';
   if (player && player.guard > 0) {
-    for (let i = 0; i < player.guard; i++) {
-      const gx = 22 + i * 21, gy = 20;
-      drones += `<g transform="translate(${gx} ${gy})"><g class="drone" style="animation-delay:${i * -0.4}s">${sticker([P('M-9 0 L0 -7 L9 0 L0 7 Z', 'mint'), C(0, 0, 2.4, 'ink')], pal)}</g></g>`;
-    }
+    for (let i = 0; i < player.guard; i++) drones += `<g transform="translate(${18 + i * 18} 16)"><g class="drone" style="animation-delay:${i * -0.4}s">${itemAt('drone_escort', 0, 0, 0.55)}</g></g>`;
   }
   return `<svg class="mech-svg" viewBox="0 0 200 200" role="img" aria-label="${f.name}">
-    <defs>${clipDefs}
-      <linearGradient id="g${uid}" x1="0" x2="1" y1="0" y2="0.3">
-        <stop offset="0.62" stop-color="${INK}" stop-opacity="0"/><stop offset="0.62" stop-color="${INK}" stop-opacity=".18"/>
-      </linearGradient>
-    </defs>
-    <g class="bob">${silhouette(body)}${out}</g>${drones}</svg>`;
+    <g class="bob">${sil}${parts}${attach}</g>${drones}</svg>`;
 }
 
-// A card as a compact sticker: the real part sticker for upgrades, a die-cut icon for everything else.
-export function cardSticker(id) {
-  return upgradeSticker(id) || cardIcon(id);
-}
-
-// A single upgrade as a standalone sticker (Workshop slots, card art).
-export function upgradeSticker(id) {
-  const c = CARDS[id];
-  if (!c.slots || (c.type !== 'weapon' && c.type !== 'boost')) return null;
-  const limb = c.slots.includes('armL') ? 'armL' : c.slots[0];
-  const shapes = mountShapes(id, limb);
-  if (!shapes.length) return null;
-  const pal = { main: '#C9D3EA', dark: '#4C5778', light: '#fff', accent: c.frame ? FRAMES[c.frame].color : '#FFC929', glow: '#9FF3FF' };
-  // Fit the viewBox to the sticker so every item fills its spot the same way.
-  const b = bbox(shapes);
-  const size = Math.max(b.x1 - b.x0, b.y1 - b.y0) + 18;
-  const vb = `${(b.cx - size / 2).toFixed(1)} ${(b.cy - size / 2).toFixed(1)} ${size.toFixed(1)} ${size.toFixed(1)}`;
-  return `<svg class="icon up-icon" viewBox="${vb}" aria-hidden="true">${sticker(shapes, pal)}</svg>`;
-}
-
-// Where a limb's HP tag sits, as % of the mech box.
-export function chipPos(frameId, limb) {
-  const b = BODIES[frameId];
-  const pos = {
-    head: [100, Math.max(8, b.mounts.head[1] - 8)],
-    armL: [Math.max(12, b.pivot.armL[0] - 34), b.pivot.armL[1] + 16],
-    armR: [Math.min(188, b.pivot.armR[0] + 34), b.pivot.armR[1] + 16],
-    legs: [100, 195],
-    core: [b.core[0], b.core[1] + b.core[2] + 15],
-  }[limb];
-  return [pos[0] / 2, pos[1] / 2];
-}
-
-// ---------------------------------------------------------------- card icons
-
-const ICONS = {
-  gun: `<rect x="10" y="22" width="34" height="14" rx="4" fill="#fff"/><rect x="40" y="25" width="16" height="7" rx="3" fill="#fff"/><rect x="16" y="34" width="10" height="14" rx="3" fill="#FFC929"/>`,
-  rail: `<rect x="6" y="24" width="52" height="10" rx="4" fill="#fff"/><rect x="12" y="20" width="18" height="18" rx="5" fill="#FFC929"/><path d="M58 29 L62 24 L62 34 Z" fill="#9FF3FF"/><path d="M36 20 L44 20 M36 38 L44 38" stroke="#121633" stroke-width="3"/>`,
-  fist: `<rect x="14" y="16" width="36" height="30" rx="10" fill="#FFC929"/><path d="M23 16 L23 34 M32 16 L32 34 M41 16 L41 34" stroke="#121633" stroke-width="3"/><rect x="20" y="44" width="24" height="10" rx="4" fill="#fff"/>`,
-  boot: `<path d="M18 10 L34 10 L34 36 L52 40 L52 52 L14 52 L14 40 Z" fill="#FFC929"/><path d="M14 46 L52 46" stroke="#121633" stroke-width="3"/>`,
-  plate: `<rect x="12" y="12" width="40" height="40" rx="8" fill="#C9D3EA"/><circle cx="20" cy="20" r="3" fill="#121633"/><circle cx="44" cy="20" r="3" fill="#121633"/><circle cx="20" cy="44" r="3" fill="#121633"/><circle cx="44" cy="44" r="3" fill="#121633"/>`,
-  wrench: `<path d="M18 46 L38 26 A10 10 0 1 1 44 32 L24 52 Z" fill="#fff"/><circle cx="44" cy="22" r="4" fill="#39E3A6"/>`,
-  rebuild: `<rect x="22" y="10" width="20" height="30" rx="6" fill="#fff"/><path d="M14 46 L50 46 L44 56 L20 56 Z" fill="#39E3A6"/><path d="M32 16 L32 34 M24 25 L40 25" stroke="#121633" stroke-width="4" stroke-linecap="round"/>`,
-  core: `<circle cx="32" cy="32" r="18" fill="#FFC929"/><circle cx="26" cy="26" r="5" fill="#fff"/><path d="M32 8 L32 14 M32 50 L32 56 M8 32 L14 32 M50 32 L56 32" stroke="#121633" stroke-width="4" stroke-linecap="round"/>`,
-  drone: `<circle cx="22" cy="34" r="11" fill="#39E3A6"/><circle cx="42" cy="26" r="11" fill="#39E3A6"/><path d="M8 18 L20 22 M34 12 L44 14" stroke="#121633" stroke-width="3" stroke-linecap="round"/>`,
-  cell: `<rect x="20" y="12" width="24" height="42" rx="6" fill="#fff"/><rect x="27" y="7" width="10" height="7" rx="2" fill="#fff"/><path d="M34 20 L26 34 L33 34 L29 46 L39 30 L32 30 Z" fill="#FFC929"/>`,
-  clock: `<circle cx="32" cy="32" r="20" fill="#fff"/><path d="M32 20 L32 33 L41 38" stroke="#121633" stroke-width="4" stroke-linecap="round" fill="none"/><path d="M48 10 L56 18 M50 18 L56 12" stroke="#FFC929" stroke-width="4" stroke-linecap="round"/>`,
-  cards: `<rect x="12" y="16" width="24" height="34" rx="5" fill="#fff" transform="rotate(-12 24 33)"/><rect x="28" y="14" width="24" height="34" rx="5" fill="#FFC929" transform="rotate(10 40 31)"/>`,
-  bolt: `<path d="M36 6 L16 36 L30 36 L24 58 L48 24 L34 24 Z" fill="#FFC929"/>`,
-  crest: `<path d="M12 40 L32 12 L52 40 L42 50 L22 50 Z" fill="#FFC929"/><path d="M22 34 L42 34" stroke="#121633" stroke-width="3"/>`,
-  scope: `<circle cx="32" cy="32" r="18" fill="#9FF3FF"/><path d="M32 8 L32 56 M8 32 L56 32" stroke="#121633" stroke-width="3"/><circle cx="32" cy="32" r="5" fill="#FF4F64"/>`,
-  missile: `<rect x="10" y="18" width="44" height="28" rx="6" fill="#fff"/><circle cx="21" cy="32" r="6" fill="#FF4F64"/><circle cx="43" cy="32" r="6" fill="#FF4F64"/>`,
-  pistol: `<rect x="12" y="20" width="36" height="12" rx="4" fill="#fff"/><rect x="16" y="30" width="10" height="18" rx="3" fill="#FFC929"/><path d="M48 26 L58 26" stroke="#9FF3FF" stroke-width="5" stroke-linecap="round"/>`,
-  dome: `<path d="M8 46 Q32 0 56 46 Z" fill="#39E3A6"/><path d="M8 46 L56 46" stroke="#121633" stroke-width="4"/>`,
-  shield: `<path d="M14 10 L50 10 L50 34 Q32 58 14 34 Z" fill="#39E3A6"/><path d="M32 14 L32 46" stroke="#121633" stroke-width="3"/>`,
-  bash: `<path d="M10 14 L36 14 L36 32 Q23 50 10 32 Z" fill="#39E3A6"/><path d="M40 22 L56 18 M40 30 L58 30 M40 38 L56 42" stroke="#FFC929" stroke-width="4" stroke-linecap="round"/>`,
-  brace: `<path d="M32 8 L52 16 L52 32 Q52 48 32 56 Q12 48 12 32 L12 16 Z" fill="#39E3A6"/><path d="M24 32 L30 38 L42 24" stroke="#121633" stroke-width="4" fill="none" stroke-linecap="round"/>`,
-  eye: `<path d="M6 32 Q32 6 58 32 Q32 58 6 32 Z" fill="#fff"/><circle cx="32" cy="32" r="11" fill="#B57BFF"/><circle cx="32" cy="32" r="4" fill="#121633"/>`,
-  blade: `<path d="M14 50 L44 10 L50 16 L22 54 Z" fill="#E8F7FF"/><path d="M12 44 L22 54" stroke="#B57BFF" stroke-width="6" stroke-linecap="round"/>`,
-  emp: `<circle cx="32" cy="32" r="10" fill="#9FF3FF"/><path d="M32 6 L36 22 L32 18 L28 22 Z M58 32 L42 36 L46 32 L42 28 Z M32 58 L28 42 L32 46 L36 42 Z M6 32 L22 28 L18 32 L22 36 Z" fill="#FFC929"/>`,
-  treads: `<path d="M14 14 L30 14 L30 40 L50 44 L50 52 L14 52 Z" fill="#B57BFF"/><path d="M8 26 L2 26 M8 34 L0 34" stroke="#E8F7FF" stroke-width="4" stroke-linecap="round"/>`,
-  sabotage: `<rect x="14" y="20" width="36" height="30" rx="6" fill="#fff"/><path d="M22 28 L42 44 M42 28 L22 44" stroke="#FF4F64" stroke-width="5" stroke-linecap="round"/><path d="M26 20 L26 12 M38 20 L38 12" stroke="#121633" stroke-width="3"/>`,
-  surge: `<circle cx="32" cy="32" r="20" fill="#FF8A3D"/><path d="M34 14 L22 34 L31 34 L28 50 L42 28 L33 28 Z" fill="#fff"/>`,
-};
-
-const CARD_ICON = {
-  pulse_rifle: 'gun', scrap_plating: 'plate', repair_pod: 'wrench', rebuild_kit: 'rebuild', core_patch: 'core',
-  drone_escort: 'drone', energy_cell: 'cell', rush_order: 'clock', scavenge: 'cards',
-  wrecking_fists: 'fist', hydraulic_fist: 'fist', piston_boots: 'boot', headbutt_crest: 'crest', adrenal_surge: 'surge',
-  rail_lance: 'rail', twin_autocannon: 'gun', scope_visor: 'scope', missile_pod: 'missile', sniper_pistol: 'pistol',
-  aegis_dome: 'dome', tower_shield: 'shield', reinforced_plating: 'plate', shield_bash: 'bash', brace: 'brace',
-  oracle_eye: 'eye', ghost_blade: 'blade', emp_spike: 'emp', phase_treads: 'treads', sabotage: 'sabotage',
-};
-
-export function iconSVG(name, cls = '') {
-  const inner = ICONS[name] || ICONS.bolt;
-  // Die-cut layers: same shapes, no own colors, fat strokes (dark rim, then white).
-  const bare = inner.replace(/\s(fill|stroke|stroke-width|stroke-linecap|fill-opacity)="[^"]*"/g, '');
-  const cut = `<g fill="${INK}" stroke="${INK}" stroke-width="13" stroke-linejoin="round" stroke-linecap="round">${bare}</g><g fill="#fff" stroke="#fff" stroke-width="9" stroke-linejoin="round" stroke-linecap="round">${bare}</g>`;
-  // Ink outline pass: re-draw with stroke underneath for the sticker look.
-  const outlined = inner.replace(/<(rect|circle|path)([^>]*?)\/>/g, (m, tag, a) =>
-    /stroke=/.test(a) ? m : `<${tag}${a} stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>`);
-  return `<svg class="icon ${cls}" viewBox="-6 -6 76 76" aria-hidden="true">${cut}${outlined}</svg>`;
-}
-
-export function cardIcon(id) {
-  return iconSVG(CARD_ICON[id] || 'bolt');
-}
+// ---------------------------------------------------------------- misc UI art
 
 export const TYPE_COLORS = {
-  weapon: '#FF4F64', boost: '#FFC929', plating: '#8FA3D9', support: '#39E3A6', order: '#B57BFF',
+  weapon: '#E5484D', boost: '#F2C230', plating: '#8C95AA', support: '#3DDC97', order: '#9B7BFF',
 };
 export const TYPE_NAMES = { weapon: 'Weapon', boost: 'Upgrade', plating: 'Plating', support: 'Support', order: 'Order' };
 
-// The logo: a die-cut wordmark.
 export function logoSVG() {
-  return `<svg class="logo" viewBox="0 0 360 160" role="img" aria-label="Mech Wars">
-    <g font-family="Oxanium, 'Arial Black', sans-serif" font-weight="800" text-anchor="middle" stroke-linejoin="round" transform="skewX(-8) translate(12 0)">
-      <text x="180" y="74" font-size="80" fill="#fff" stroke="#fff" stroke-width="22" letter-spacing="2">MECH</text>
-      <text x="180" y="146" font-size="80" fill="#fff" stroke="#fff" stroke-width="22" letter-spacing="2">WARS</text>
-      <text x="180" y="74" font-size="80" fill="#FFC929" stroke="${INK}" stroke-width="5" paint-order="stroke" letter-spacing="2">MECH</text>
-      <text x="180" y="146" font-size="80" fill="#FF4F64" stroke="${INK}" stroke-width="5" paint-order="stroke" letter-spacing="2">WARS</text>
-    </g></svg>`;
+  const t = (y, txt, fill, stroke, w, extra = '') => `<text x="180" y="${y}" font-size="72" letter-spacing="6" fill="${fill}" stroke="${stroke}" stroke-width="${w}" ${extra}>${txt}</text>`;
+  return `<svg class="logo" viewBox="0 0 360 150" role="img" aria-label="Mech Wars">
+    <g font-family="Oxanium, 'Arial Black', sans-serif" font-weight="800" text-anchor="middle" stroke-linejoin="round" transform="skewX(-10) translate(14 0)">
+      ${t(68, 'MECH', INK, INK, 15)}${t(136, 'WARS', INK, INK, 15)}
+      ${t(68, 'MECH', '#fff', '#fff', 9.5)}${t(136, 'WARS', '#fff', '#fff', 9.5)}
+      ${t(68, 'MECH', '#E7EAF1', INK, 2.4, 'paint-order="stroke"')}${t(136, 'WARS', '#E5484D', INK, 2.4, 'paint-order="stroke"')}
+    </g>
+    <g transform="translate(40 78)"><rect width="280" height="5" rx="2.5" fill="#3D6ED6"/><rect x="214" width="66" height="5" rx="2.5" fill="#F2C230"/></g></svg>`;
 }
 
-// Tiny glyphs for limb labels.
+// Tiny glyphs for status rows.
 const LIMB_GLYPH = {
-  head: '<rect x="3" y="3.5" width="10" height="9" rx="2.5" fill="#fff" stroke="#121633" stroke-width="1.6"/><rect x="5" y="6.5" width="6" height="2.4" rx="1.2" fill="#121633"/>',
-  armL: '<rect x="4.5" y="2" width="7" height="8" rx="2.5" fill="#fff" stroke="#121633" stroke-width="1.6"/><rect x="3.5" y="9" width="9" height="5.5" rx="2" fill="#fff" stroke="#121633" stroke-width="1.6"/>',
-  legs: '<rect x="3" y="2" width="4" height="9" rx="1.5" fill="#fff" stroke="#121633" stroke-width="1.6"/><rect x="9" y="2" width="4" height="9" rx="1.5" fill="#fff" stroke="#121633" stroke-width="1.6"/><path d="M2 14h6M8 14h6" stroke="#121633" stroke-width="2.4" stroke-linecap="round"/>',
+  head: '<path d="M4 3h8l1.5 4-1 5H3.5l-1-5z" fill="#C9CFDB" stroke="#15172A" stroke-width="1.3" stroke-linejoin="round"/><path d="M5 7h6" stroke="#7CFFB2" stroke-width="1.6" stroke-linecap="round"/>',
+  armL: '<path d="M3 2h9l1 4H3z" fill="#C9CFDB" stroke="#15172A" stroke-width="1.3" stroke-linejoin="round"/><path d="M6 6h4v4H6z" fill="#3B4058" stroke="#15172A" stroke-width="1.3"/><path d="M5 10h6l.5 4h-7z" fill="#C9CFDB" stroke="#15172A" stroke-width="1.3" stroke-linejoin="round"/>',
+  legs: '<path d="M3 2h4v8H3zM9 2h4v8H9z" fill="#C9CFDB" stroke="#15172A" stroke-width="1.3"/><path d="M2 10h6v4H2zM8 10h6v4H8z" fill="#3B4058" stroke="#15172A" stroke-width="1.3"/>',
 };
 LIMB_GLYPH.armR = LIMB_GLYPH.armL;
 export function limbGlyph(k) {
   return `<svg class="lg" viewBox="0 0 16 16" aria-hidden="true">${LIMB_GLYPH[k]}</svg>`;
+}
+
+// Head sticker markup for the app icon generator (tools/icons.mjs).
+export function headSticker(frame = 'longshot') {
+  const shapes = HEADS[frame]();
+  return { svg: sticker(shapes, PAL[frame]), box: bbox(shapes) };
 }

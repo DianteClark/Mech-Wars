@@ -1,31 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <defs>
-    <pattern id="g" width="64" height="64" patternUnits="userSpaceOnUse"><path d="M64 0H0V64" fill="none" stroke="#fff" stroke-opacity=".09" stroke-width="3"/></pattern>
-    <pattern id="G" width="256" height="256" patternUnits="userSpaceOnUse"><path d="M256 0H0V256" fill="none" stroke="#fff" stroke-opacity=".15" stroke-width="5"/></pattern>
-    <radialGradient id="v" cx="50%" cy="45%" r="70%"><stop offset="55%" stop-color="#0A1450" stop-opacity="0"/><stop offset="100%" stop-color="#0A1450" stop-opacity=".55"/></radialGradient>
-    <linearGradient id="cel" x1="0" x2="1" y1="0" y2=".3"><stop offset=".6" stop-color="#121633" stop-opacity="0"/><stop offset=".6" stop-color="#121633" stop-opacity=".2"/></linearGradient>
-    <clipPath id="hc"><path d="M86 44 L114 44 L119 56 L112 70 L88 70 L81 56 Z"/></clipPath>
+    <radialGradient id="bg" cx="50%" cy="42%" r="72%"><stop offset="0" stop-color="#2A2660"/><stop offset=".62" stop-color="#16142F"/><stop offset="1" stop-color="#0D0B1E"/></radialGradient>
+    <pattern id="g" width="64" height="64" patternUnits="userSpaceOnUse"><path d="M64 0H0V64" fill="none" stroke="#7DF9FF" stroke-opacity=".06" stroke-width="3"/></pattern>
   </defs>
-  <rect width="1024" height="1024" fill="#2546C8"/>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
   <rect width="1024" height="1024" fill="url(#g)"/>
-  <rect width="1024" height="1024" fill="url(#G)"/>
-  <rect width="1024" height="1024" fill="url(#v)"/>
-  <g transform="translate(-1288 -410) scale(18)" stroke-linejoin="round">
-    <!-- shadow + die-cut for the fin sticker and the helmet sticker -->
-    <g transform="translate(0 1.8)" fill="#08123F" stroke="#08123F" stroke-width="3.6" opacity=".4">
-      <path d="M100 50 L82 32 L89 31 L100 42 L111 31 L118 32 Z"/><path d="M86 44 L114 44 L119 56 L112 70 L88 70 L81 56 Z"/><path d="M93 66 L107 66 L104 73 L96 73 Z"/>
-    </g>
-    <g fill="#fff" stroke="#fff" stroke-width="3.6">
-      <path d="M100 50 L82 32 L89 31 L100 42 L111 31 L118 32 Z"/><path d="M86 44 L114 44 L119 56 L112 70 L88 70 L81 56 Z"/><path d="M93 66 L107 66 L104 73 L96 73 Z"/>
-    </g>
-    <g stroke="#121633" stroke-width="1.15">
-      <path d="M100 50 L82 32 L89 31 L100 42 L111 31 L118 32 Z" fill="#FFD23F"/>
-      <path d="M86 44 L114 44 L119 56 L112 70 L88 70 L81 56 Z" fill="#FF8A3D"/>
-      <rect x="0" y="0" width="200" height="200" fill="url(#cel)" clip-path="url(#hc)" stroke="none"/>
-      <path d="M88 47 L104 47 L101 52 L86 53 Z" fill="#fff" fill-opacity=".45" stroke="none"/>
-      <path d="M88 56 L112 56 L109 62 L91 62 Z" fill="#FFE45C"/>
-      <path d="M91 58.2 L97 58.2" stroke="#fff" stroke-width="1.1" stroke-linecap="round"/>
-      <path d="M93 66 L107 66 L104 73 L96 73 Z" fill="#B3602A"/>
-    </g>
-  </g>
+  <ellipse cx="512" cy="860" rx="300" ry="40" fill="#3D6ED6" opacity=".28"/>
+  <g transform="translate(512.0 623.3) scale(18.667)"><g class="stk" >
+    <g transform="translate(0 1.6)" fill="#05040F" stroke="#05040F" stroke-width="5.6" stroke-linejoin="round" opacity=".55"><path d="M0 -7 L-15 -19 L-12.5 -20 L0 -11 L12.5 -20 L15 -19 Z"/><path d="M-9 -11 L9 -11 L11 -4 L10 6 L6 10 L-6 10 L-10 6 L-11 -4 Z"/><path d="M2 -11 L9 -11 L11 -4 L10 6 L6 10 L2 10 Z"/><path d="M-3 -11 L3 -11 L2.2 -5.5 L-2.2 -5.5 Z"/><path d="M-1.4 -10 L1.4 -10 L1.1 -7.5 L-1.1 -7.5 Z"/><path d="M-7.5 -3.5 L7.5 -3.5 L6.5 2.5 L-6.5 2.5 Z"/><path d="M-6.5 -2.5 L-1.8 -1.5 L-2.2 1.2 L-6 0.8 Z"/><path d="M6.5 -2.5 L1.8 -1.5 L2.2 1.2 L6 0.8 Z"/><path d="M-4.2 3.8 L4.2 3.8 L3.2 9.2 L-3.2 9.2 Z"/></g>
+    <g fill="#15172A" stroke="#15172A" stroke-width="5.6" stroke-linejoin="round"><path d="M0 -7 L-15 -19 L-12.5 -20 L0 -11 L12.5 -20 L15 -19 Z"/><path d="M-9 -11 L9 -11 L11 -4 L10 6 L6 10 L-6 10 L-10 6 L-11 -4 Z"/><path d="M2 -11 L9 -11 L11 -4 L10 6 L6 10 L2 10 Z"/><path d="M-3 -11 L3 -11 L2.2 -5.5 L-2.2 -5.5 Z"/><path d="M-1.4 -10 L1.4 -10 L1.1 -7.5 L-1.1 -7.5 Z"/><path d="M-7.5 -3.5 L7.5 -3.5 L6.5 2.5 L-6.5 2.5 Z"/><path d="M-6.5 -2.5 L-1.8 -1.5 L-2.2 1.2 L-6 0.8 Z"/><path d="M6.5 -2.5 L1.8 -1.5 L2.2 1.2 L6 0.8 Z"/><path d="M-4.2 3.8 L4.2 3.8 L3.2 9.2 L-3.2 9.2 Z"/></g>
+    <g fill="#fff" stroke="#fff" stroke-width="3.4" stroke-linejoin="round"><path d="M0 -7 L-15 -19 L-12.5 -20 L0 -11 L12.5 -20 L15 -19 Z"/><path d="M-9 -11 L9 -11 L11 -4 L10 6 L6 10 L-6 10 L-10 6 L-11 -4 Z"/><path d="M2 -11 L9 -11 L11 -4 L10 6 L6 10 L2 10 Z"/><path d="M-3 -11 L3 -11 L2.2 -5.5 L-2.2 -5.5 Z"/><path d="M-1.4 -10 L1.4 -10 L1.1 -7.5 L-1.1 -7.5 Z"/><path d="M-7.5 -3.5 L7.5 -3.5 L6.5 2.5 L-6.5 2.5 Z"/><path d="M-6.5 -2.5 L-1.8 -1.5 L-2.2 1.2 L-6 0.8 Z"/><path d="M6.5 -2.5 L1.8 -1.5 L2.2 1.2 L6 0.8 Z"/><path d="M-4.2 3.8 L4.2 3.8 L3.2 9.2 L-3.2 9.2 Z"/></g>
+    <path d="M0 -7 L-15 -19 L-12.5 -20 L0 -11 L12.5 -20 L15 -19 Z" fill="#E4B23C" stroke="#15172A" stroke-width="1.15" stroke-linejoin="round"/><path d="M-9 -11 L9 -11 L11 -4 L10 6 L6 10 L-6 10 L-10 6 L-11 -4 Z" fill="#D2463A" stroke="#15172A" stroke-width="1.15" stroke-linejoin="round"/><path d="M2 -11 L9 -11 L11 -4 L10 6 L6 10 L2 10 Z" fill="#9C3229" stroke="#15172A" stroke-width="1.15" stroke-linejoin="round"/><path d="M-3 -11 L3 -11 L2.2 -5.5 L-2.2 -5.5 Z" fill="#E7E1D5" stroke="#15172A" stroke-width="1.15" stroke-linejoin="round"/><path d="M-1.4 -10 L1.4 -10 L1.1 -7.5 L-1.1 -7.5 Z" fill="#E5484D" stroke="#15172A" stroke-width="1.15" stroke-linejoin="round"/><path d="M-7.5 -3.5 L7.5 -3.5 L6.5 2.5 L-6.5 2.5 Z" fill="#3B4058" stroke="#15172A" stroke-width="1.15" stroke-linejoin="round"/><path d="M-6.5 -2.5 L-1.8 -1.5 L-2.2 1.2 L-6 0.8 Z" fill="#FFE45C" stroke="#15172A" stroke-width="1.15" stroke-linejoin="round" class="eye"/><path d="M6.5 -2.5 L1.8 -1.5 L2.2 1.2 L6 0.8 Z" fill="#FFE45C" stroke="#15172A" stroke-width="1.15" stroke-linejoin="round" class="eye"/><path d="M-4.2 3.8 L4.2 3.8 L3.2 9.2 L-3.2 9.2 Z" fill="#E7E1D5" stroke="#15172A" stroke-width="1.15" stroke-linejoin="round"/><path d="M-1.6 5 L-1.6 8.2 M0 5 L0 8.2 M1.6 5 L1.6 8.2" fill="none" stroke="#15172A" stroke-width=".65" stroke-linecap="round" opacity=".55"/><path d="M-8 -10 L-1 -10 L-2 -7 L-8.5 -6.5 Z" fill="#fff" opacity=".38"/></g></g>
 </svg>
