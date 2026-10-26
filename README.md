@@ -6,7 +6,26 @@ Each player brings a single **Frame** (their mech), a **Pilot** who shapes how i
 
 ## Status
 
-🛠️ **Design phase.** No playable prototype yet — we're locking down the rules first.
+🎮 **Prototype v0.1 is playable.** Four Frames, a fair-play AI with five skill tiers, Ranked and Practice Tower climbs, a local leaderboard, and scrap unlocks. Works offline once loaded, and installs to the iPhone Home Screen.
+
+## Play it
+
+The game is plain HTML/JS with no build step, so GitHub Pages can host it directly:
+
+1. In the repo on GitHub: **Settings → Pages**
+2. Under *Build and deployment*, set **Source: Deploy from a branch**, **Branch: `main`**, folder **`/ (root)`**, then **Save**
+3. After a minute it's live at `https://dianteclark.github.io/Mech-Wars/`
+4. On iPhone, open that link in Safari → **Share → Add to Home Screen**
+
+To run locally: `npm run serve`, then open http://localhost:8080.
+
+## Developer tools
+
+| Command | What it does |
+|---|---|
+| `node tools/test.mjs` | Engine tests (rules, replay determinism, AI fairness) |
+| `node tools/sim.mjs [games] [level]` | AI-vs-AI matchup table for balance checks |
+| `node tools/tune.mjs [iterations] [games]` | Self-play tuning of the AI's evaluation weights |
 
 ## Repo layout
 
@@ -14,11 +33,16 @@ Each player brings a single **Frame** (their mech), a **Pilot** who shapes how i
 |---|---|
 | `docs/DESIGN.md` | Core game design: rules, resources, card types, decisions so far |
 | `docs/OPEN_QUESTIONS.md` | Things still being decided |
-| `src/` | The HTML prototype (coming later) |
+| `src/engine/` | Rules engine (`game.js`), card/frame data (`data.js`), AI (`ai.js`) |
+| `src/ui/` | Screens, battle UI, sticker art (`art.js`), Tower logic, save data |
+| `tools/` | Tests, balance simulator, AI tuner |
+| `icons/`, `fonts/` | App icon and bundled fonts |
 
 ## Roadmap (rough)
 
-1. Finalize core rules in `docs/`
-2. Single-player prototype in the browser (vs. AI)
-3. Offline modes for learning and building strategies
-4. PvP (much later)
+1. ~~Finalize core rules~~
+2. ~~Single-player prototype vs. AI~~ (v0.1)
+3. Playtest and tune: balance, AI, UI feel
+4. More Frames, pilot Orders, sound
+5. Online leaderboard with replay-verified ranked runs
+6. PvP (much later)

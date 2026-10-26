@@ -1,0 +1,9 @@
+{
+  "name": "mech-wars",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sim": "node tools/sim.mjs",
+    "serve": "npx --yes http-server -c-1 -p 8080 ."
+  }
+}

@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <pattern id="g" width="64" height="64" patternUnits="userSpaceOnUse">
+      <path d="M64 0H0V64" fill="none" stroke="#fff" stroke-opacity=".10" stroke-width="3"/>
+    </pattern>
+    <pattern id="G" width="256" height="256" patternUnits="userSpaceOnUse">
+      <path d="M256 0H0V256" fill="none" stroke="#fff" stroke-opacity=".16" stroke-width="5"/>
+    </pattern>
+    <radialGradient id="v" cx="50%" cy="45%" r="70%">
+      <stop offset="55%" stop-color="#0A1450" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#0A1450" stop-opacity=".55"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="#2546C8"/>
+  <rect width="1024" height="1024" fill="url(#g)"/>
+  <rect width="1024" height="1024" fill="url(#G)"/>
+  <rect width="1024" height="1024" fill="url(#v)"/>
+
+  <!-- drop shadow -->
+  <g transform="translate(0 34)" fill="#0B1A5C" stroke="#0B1A5C" opacity=".55" stroke-width="64" stroke-linejoin="round">
+    <circle cx="512" cy="160" r="34"/><rect x="501" y="160" width="22" height="110"/>
+    <rect x="166" y="420" width="120" height="250" rx="44"/>
+    <rect x="738" y="420" width="120" height="250" rx="44"/>
+    <path d="M250 360 Q512 196 774 360 L744 776 Q512 868 280 776 Z"/>
+  </g>
+
+  <!-- white die-cut -->
+  <g fill="#fff" stroke="#fff" stroke-width="64" stroke-linejoin="round">
+    <circle cx="512" cy="160" r="34"/><rect x="501" y="160" width="22" height="110"/>
+    <rect x="166" y="420" width="120" height="250" rx="44"/>
+    <rect x="738" y="420" width="120" height="250" rx="44"/>
+    <path d="M250 360 Q512 196 774 360 L744 776 Q512 868 280 776 Z"/>
+  </g>
+
+  <!-- the mech head -->
+  <g stroke="#121633" stroke-width="22" stroke-linejoin="round" stroke-linecap="round">
+    <!-- antenna -->
+    <path d="M512 252 L512 170" fill="none"/>
+    <circle cx="512" cy="160" r="34" fill="#FF4F64"/>
+    <!-- ear pods -->
+    <rect x="166" y="420" width="120" height="250" rx="44" fill="#C4581F"/>
+    <rect x="738" y="420" width="120" height="250" rx="44" fill="#C4581F"/>
+    <!-- helmet -->
+    <path d="M250 360 Q512 196 774 360 L744 776 Q512 868 280 776 Z" fill="#FF8A3D"/>
+    <!-- jaw shade -->
+    <path d="M296 640 L728 640 L716 772 Q512 852 308 772 Z" fill="#C4581F"/>
+    <!-- visor -->
+    <rect x="318" y="430" width="388" height="132" rx="66" fill="#121633"/>
+    <rect x="364" y="468" width="120" height="56" rx="28" fill="#FFC929" stroke-width="0"/>
+    <rect x="540" y="468" width="120" height="56" rx="28" fill="#FFC929" stroke-width="0"/>
+    <rect x="380" y="478" width="34" height="18" rx="9" fill="#fff" stroke-width="0"/>
+    <rect x="556" y="478" width="34" height="18" rx="9" fill="#fff" stroke-width="0"/>
+    <!-- grille -->
+    <path d="M430 690 L430 760 M482 696 L482 774 M542 696 L542 774 M594 690 L594 760" fill="none" stroke-width="20"/>
+    <!-- brow plate -->
+    <path d="M360 372 Q512 300 664 372" fill="none" stroke-width="20"/>
+    <!-- bolts -->
+    <circle cx="226" cy="545" r="20" fill="#FFC929" stroke-width="12"/>
+    <circle cx="798" cy="545" r="20" fill="#FFC929" stroke-width="12"/>
+  </g>
+</svg>

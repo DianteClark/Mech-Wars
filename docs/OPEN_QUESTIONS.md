@@ -2,16 +2,20 @@
 
 - [x] ~~Offline mode structure~~ → Battle Tower (see DESIGN.md)
 - [x] ~~Tower carryover~~ → every battle starts fresh
-- [x] ~~Run end~~ → Ranked (one loss) + Casual (retries)
+- [x] ~~Run end~~ → Ranked (one loss) + Practice (retries)
 - [ ] **Backend choice:** Supabase vs Firebase vs custom server (decide before online features)
-- [ ] **Tower structure:** boss floors, checkpoints, per-Frame leaderboards?
-- [ ] **Part pool:** shared across all Frames, or per-Frame arsenals?
-- [ ] **Energy ramp:** does energy ramp up over the first turns, or start at full Core output?
-- [ ] **Limb order:** exact rules for which limbs must fall before the Core is exposed.
-- [ ] **Slot list:** final set of mountable slots (Head, Torso, Arms, Legs, Back?).
-- [ ] **Part durability:** do parts have their own HP, or only the limb they're mounted on?
+- [x] ~~Tower structure~~ → bosses every 5th floor, twists every 3rd, per-Frame leaderboard tabs
+- [x] ~~Part pool~~ → 12 shared crew cards + 8 Frame-specific cards per deck
+- [x] ~~Energy ramp~~ → 2, 3, then full output
+- [x] ~~Limb order~~ → any 2 limbs down exposes the Core
+- [x] ~~Slot list~~ → Head, Left arm, Right arm, Legs (one mount + one plating each)
+- [x] ~~Part durability~~ → parts live and die with their limb
 - [ ] **Alt win conditions:** anything besides Core → 0 (e.g. full cripple)?
-- [ ] **Deck size & hand size.**
-- [ ] **Pilot list:** first set of pilots and their Orders.
-- [ ] **Starter Frames:** first 3–4 Frames with traits and signature parts.
+- [x] ~~Deck size & hand size~~ → 20-card decks, 5-card opening hand, max 8
+- [x] ~~Pilot list~~ → 4 pilots (see DESIGN.md). Unique per-pilot Orders still open.
+- [x] ~~Starter Frames~~ → Brakka, Longshot, Bastion, Specter
 - [ ] **Theme/setting:** world, factions, art direction.
+- [ ] **First-player edge:** still ~55% after the opening-turn limits. Worth another look after human playtests.
+- [ ] **Back/torso slot:** a fifth mount point that can't be destroyed until the Core is exposed?
+- [ ] **Sound and music.**
+- [ ] **Per-pilot Orders:** each pilot gets a unique Order beyond the doctrine swap.

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport-fit=cover lets us paint under the notch/home bar; safe-area insets keep UI clear of them -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Mech Wars</title>
+  <meta name="description" content="A sticker-style mech card battler. Build your mech mid-fight and climb the Battle Tower.">
+  <meta name="theme-color" content="#2546C8">
+  <!-- Home Screen app (iOS) -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mech Wars">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="preload" href="fonts/lilita-one.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+  <div id="app" aria-live="polite"></div>
+  <div id="fx" aria-hidden="true"></div>
+  <div id="rotate-hint" aria-hidden="true">
+    <div class="rotate-card">Turn your phone upright to play</div>
+  </div>
+  <script type="module" src="src/ui/app.js"></script>
+</body>
+</html>
