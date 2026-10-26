@@ -2,7 +2,7 @@
 
 Sticker-style mech TCG in plain HTML/JS (ES modules, no build step), hosted on GitHub Pages. Phone-first (iPhone Home Screen app).
 
-- **Design source of truth:** `docs/DESIGN.md`; open items in `docs/OPEN_QUESTIONS.md`. Keep both current when rules change.
+- **Design source of truth:** `docs/DESIGN.md` (v2: tactics board, in review; open questions at the bottom). v1 is archived in `docs/archive/`. The current code still implements v1 until the v2 engine lands.
 - **Numbers live in `src/engine/data.js`.** Frame traits are data-driven via each Frame's `tune` object.
 - **Engine (`src/engine/game.js`) must stay pure and deterministic:** all randomness through the seeded RNG in state. Matches are saved/replayed from `(setup, actions)`; ranked verification depends on this.
 - **AI fairness:** the AI only plans on `determinize()`d states. Never let it read the human's hand, deck order or Workshop contents.

@@ -1,5 +1,9 @@
 # Mech Wars
 
+### ▶ [Play Mech Wars](https://dianteclark.github.io/Mech-Wars/)
+
+On iPhone: open the link in Safari, then **Share → Add to Home Screen**.
+
 A browser-based (HTML) trading card game where you don't summon an army — you **build one machine mid-battle**.
 
 Each player brings a single **Frame** (their mech), a **Pilot** who shapes how it fights, and a **Crew** whose doctrine decides how parts get built. While your crew works in the Workshop, your mech is out there brawling — punching, kicking, and mounting new weapons as they come off the line. Break through the enemy's limbs, crack their Core, and the mech goes down.
@@ -42,7 +46,7 @@ To run locally: `npm run serve`, then open http://localhost:8080.
 
 | Path | What's there |
 |---|---|
-| `docs/DESIGN.md` | Core game design: rules, resources, card types, decisions so far |
+| `docs/DESIGN.md` | Core game design (v2: tactics board). v1 is in `docs/archive/` |
 | `docs/OPEN_QUESTIONS.md` | Things still being decided |
 | `src/engine/` | Rules engine (`game.js`), card/frame data (`data.js`), AI (`ai.js`) |
 | `src/ui/` | Screens, battle UI, sticker art (`art.js`), Tower logic, save data |
