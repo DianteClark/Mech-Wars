@@ -13,7 +13,7 @@ import { mechSVG, iconSVG, cardIcon, logoSVG, chipPos, limbGlyph, TYPE_COLORS, T
 import { load, save, update, resetAll } from './store.js';
 import { newRun, startBattle, twistFor, enemyFor, aiLevel, reward, isBoss } from './tower.js';
 
-const VERSION = '0.3';
+const VERSION = '0.4';
 const app = document.getElementById('app');
 const fx = document.getElementById('fx');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms * speed()));
@@ -245,64 +245,74 @@ function slotsView(p, enemy) {
   return `<div class="slots ${enemy ? 'enemy-slots' : ''}">${h}</div>`;
 }
 
-function mechBox(p, side) {
+// The status rail beside each mech: Core, then one row per part. Keeps all numbers off the art.
+const RAIL_NAMES = { head: 'Head', armL: 'L arm', armR: 'R arm', legs: 'Legs' };
+
+function partRail(p, side) {
   const you = G.players[0];
-  const targeting = side === 'enemy' && ui.mode === 'target';
-  let chips = '';
+  const isFoe = side === 'enemy';
+  const targeting = isFoe && ui.mode === 'target';
   const prof = targeting ? attackProfile(you, ui.sel.limb, ui.sel.mode) : null;
+  const left = RULES.exposeAfter - destroyedCount(p);
+
+  // Core row
+  let coreState, coreAct = `data-act="coreInfo" data-side="${isFoe ? 'foe' : 'you'}"`, coreCls = 'core-row';
+  if (isExposed(p)) {
+    coreCls += ' open';
+    coreState = 'Core open';
+    if (targeting) {
+      const r = previewHit(you, p, 'core', prof);
+      coreCls += ' target' + (r.core === 0 ? ' blocked' : '');
+      coreState = r.core === 0 ? 'Blocked' : `Hit Core −${r.core}`;
+      coreAct = 'data-act="hit" data-t="core"';
+    }
+  } else coreState = `${LOCK}Break ${left} to open`;
+  const pct = Math.max(0, p.core / RULES.coreMax);
+  const coreColor = p.core >= 15 ? '#FFC929' : p.core >= 8 ? '#FF8A3D' : '#FF4F64';
+  let rows = `<button class="${coreCls}" ${coreAct} data-limb="core" aria-label="${isFoe ? 'Enemy' : 'Your'} Core ${p.core}">
+    <span class="cr-ring" style="--p:${Math.round(pct * 100)};--c:${coreColor}"><b>${p.core}</b></span>
+    <span class="cr-text"><span class="cr-title">Core <small>${energyOutput(p)}${BOLT(false, 'ib')}/turn</small></span><span class="cr-state">${coreState}</span></span></button>`;
+
   for (const k of LIMBS) {
     const l = p.limbs[k];
-    const [x, y] = chipPos(p.frame, k);
-    let cls = 'tag';
-    let body;
-    let act = '';
+    const m = l.alive && l.mount ? CARDS[l.mount.id] : null;
+    let cls = 'part-row';
+    let act = `data-act="partInfo" data-side="${isFoe ? 'e' : 'y'}" data-limb="${k}"`;
+    let right;
     if (!l.alive) {
       cls += ' dead';
-      body = `${limbGlyph(k)}<span class="tv">Down</span>`;
+      right = '<span class="pr-val">Down</span>';
     } else {
-      const pct = Math.round((l.hp / l.max) * 100);
+      const hp = Math.round((l.hp / l.max) * 100);
       if (l.hp <= l.max / 3) cls += ' low';
-      body = `${limbGlyph(k)}<span class="tv">${l.hp}${l.plating ? `<span class="armor">${SHIELD}${CARDS[l.plating.id].armor}</span>` : ''}</span><i class="hp"><i style="width:${pct}%"></i></i>`;
+      right = `<span class="pr-bar"><i style="width:${hp}%"></i></span><span class="pr-val">${l.hp}${l.plating ? `<small>${SHIELD}${CARDS[l.plating.id].armor}</small>` : ''}</span>`;
     }
     if (targeting && l.alive) {
       const r = previewHit(you, p, k, prof);
       const blocked = r.limb === 0 && r.core === 0;
-      cls += ' target' + (blocked ? ' blocked' : '') + (r.limb >= l.hp ? ' kill' : '');
-      body = blocked ? 'Blocked' : `−${r.limb}${r.limb >= l.hp ? ' ✕' : ''}${r.core ? ` <small>core −${r.core}</small>` : ''}`;
+      const kill = r.limb >= l.hp;
+      cls += ' target' + (blocked ? ' blocked' : '') + (kill ? ' kill' : '');
+      right = `<span class="pr-hit">${blocked ? 'Blocked' : `−${r.limb}${kill ? ' · break' : ''}${r.core ? ` · core −${r.core}` : ''}`}</span>`;
       act = `data-act="hit" data-t="${k}"`;
-    }
-    if (side === 'you' && ui.mode === 'idle' && canAct(k)) { cls += ' act'; act = `data-act="limb" data-limb="${k}"`; }
-    chips += `<button class="${cls}" style="left:${x}%;top:${y}%" ${act} aria-label="${side === 'you' ? 'Your' : 'Enemy'} ${LIMB_NAMES[k]}">${body}</button>`;
+    } else if (!isFoe && ui.mode === 'idle' && canAct(k)) {
+      cls += ' act';
+      act = `data-act="limb" data-limb="${k}"`;
+      const modes = attackModes(you, k).filter((md) => md !== 'fire' || fireCost(you, k) <= you.energy);
+      const best = modes.map((md) => attackProfile(you, k, md).dmg);
+      right = `<span class="pr-go">${modes.includes('fire') ? 'Fire' : modes[0] === 'kick' ? 'Kick' : 'Punch'} ${Math.max(...best)}</span>`;
+    } else if (!isFoe && ui.sel && ui.mode !== 'idle' && ui.sel.limb === k) cls += ' selected';
+    rows += `<button class="${cls}" ${act} data-limb="${k}" aria-label="${isFoe ? 'Enemy' : 'Your'} ${LIMB_NAMES[k]}">
+      ${limbGlyph(k)}<span class="pr-name">${RAIL_NAMES[k]}${m ? `<span class="pr-mount">${m.name}</span>` : ''}</span>${right}</button>`;
   }
-  // Core status, right on the mech's chest.
-  {
-    const [x, y] = chipPos(p.frame, 'core');
-    const left = RULES.exposeAfter - destroyedCount(p);
-    let cls = 'tag core-tag', txt, act = '';
-    if (isExposed(p)) {
-      cls += ' open';
-      txt = 'Core open';
-      if (targeting) {
-        const r = previewHit(you, p, 'core', prof);
-        cls += ' target' + (r.core === 0 ? ' blocked' : '');
-        txt = r.core === 0 ? 'Blocked' : `Core −${r.core}`;
-        act = 'data-act="hit" data-t="core"';
-      }
-    } else {
-      txt = `${LOCK}Shield<span class="long"> · break</span> ${left}`;
-    }
-    chips += `<button class="${cls}" style="left:${x}%;top:${y}%" ${act} aria-label="Core ${isExposed(p) ? 'open' : 'shielded'}">${txt}</button>`;
-  }
-  const overlay = side === 'enemy'
-    ? `<div class="foe-overlay"><div class="foe-col"><span class="ov-label">Workshop</span>${slotsView(p, true)}</div>
-        <div class="foe-col"><span class="ov-label">Hand</span><span class="hud-stat" aria-label="${p.hand.length} cards in hand"><span class="hand-backs">${'<i></i>'.repeat(Math.min(p.hand.length, 4))}</span><b>${p.hand.length}</b></span>
-        ${p.guard ? `<span class="ov-label">Drones</span><span class="hud-stat"><b>${p.guard}</b></span>` : ''}</div></div>`
-    : '';
+  return `<div class="rail ${isFoe ? 'foe-rail' : 'you-rail'}">${rows}</div>`;
+}
+
+function mechPad(p, side) {
   const idx = side === 'you' ? 0 : 1;
   const opts = {};
   if (ui.fxSlap && ui.fxSlap.p === idx) { opts.slap = ui.fxSlap.limb; opts.slapKind = ui.fxSlap.kind; }
   if (ui.fxPeel && ui.fxPeel.p === idx) opts.peel = ui.fxPeel.limb;
-  return `<div class="mech-zone ${side}-zone">${overlay}<div class="mech-box" id="box-${side}">${mechSVG(p.frame, p, opts)}${chips}</div></div>`;
+  return `<div class="pad ${side}-pad"><div class="mech-box" id="box-${side}">${mechSVG(p.frame, p, opts)}</div></div>`;
 }
 
 function canAct(limb) {
@@ -347,7 +357,7 @@ function trayView() {
     const prof = attackProfile(you, ui.sel.limb, ui.sel.mode);
     const kws = [prof.snipe && 'Snipe', prof.pierce && `Pierce ${prof.pierce}`, prof.shred && 'Shred'].filter(Boolean).join(' · ');
     const name = ui.sel.mode === 'fire' ? CARDS[you.limbs[ui.sel.limb].mount.id].name : ui.sel.mode === 'punch' ? 'Punch' : 'Kick';
-    return `<div class="tray"><div class="tray-title"><b>${name}</b> for ${prof.dmg}${kws ? ` · ${kws}` : ''}<br>Tap a red tag on the enemy to hit it</div>
+    return `<div class="tray"><div class="tray-title"><b>${name}</b> for ${prof.dmg}${kws ? ` · ${kws}` : ''}<br>Tap a red row or enemy part to hit it</div>
       <div class="tray-row"><button class="btn small white" data-act="cancel">Cancel</button></div></div>`;
   }
   if (ui.rushPick) {
@@ -359,7 +369,7 @@ function trayView() {
 
 // One-time coaching tips, shown until dismissed (Settings can turn them off or bring them back).
 const TIPS = [
-  { id: 'attack', when: () => LIMBS.some(canAct) && you().turnsTaken <= 3, text: 'Tap a glowing tag on your mech to attack with that limb. Each limb acts once per turn.' },
+  { id: 'attack', when: () => LIMBS.some(canAct) && you().turnsTaken <= 3, text: 'Tap a glowing row (or the part itself) to attack with that limb. Each limb acts once per turn.' },
   { id: 'build', when: () => you().hand.some((id) => CARDS[id].type !== 'order' && canPlay(G, you(), id)), text: 'Tap a card to build it. Builds go into your Workshop and land after the turns on the card.' },
   { id: 'shield', when: () => !isExposed(G.players[1]), text: 'The enemy Core is shielded. Break any 2 of its limbs to open it up.' },
   { id: 'open', when: () => isExposed(G.players[1]), text: 'Their Core is open! Every hit on it brings you closer to the win.' },
@@ -379,7 +389,7 @@ function battleView() {
   const run = load().run;
   const myTurn = G.active === 0 && !ui.busy && G.winner === null;
   const tray = trayView();
-  const energyMax = Math.max(you.energy, Math.min(you.turnsTaken + 1, energyOutput(you)) + (you.cells > 0 ? 0 : 0));
+  const energyMax = Math.max(you.energy, Math.min(you.turnsTaken + 1, energyOutput(you)));
   const energy = Array.from({ length: Math.max(energyMax, 1) }, (_, i) => BOLT(i >= you.energy)).join('');
   const actions = Array.from({ length: apMax(you) }, (_, i) => FISTPIP(i >= you.ap)).join('');
   const odOk = myTurn && legalActions(G).some((a) => a.t === 'overdrive');
@@ -387,29 +397,34 @@ function battleView() {
   const turnNo = Math.ceil(G.turn / 2);
   const tip = !tray && currentTip();
   return `<div class="screen battle ${G.active === 0 ? 'your-turn' : 'their-turn'}">
-    <header class="hud foe-hud">
-      <button class="hud-id" data-act="foeInfo"><span class="side-label foe">Enemy</span><b>${FRAMES[foe.frame].name}</b><span class="hud-sub">${FRAMES[foe.frame].role} · ${PILOTS[foe.pilot].style}${isBoss(run.floor) ? ' · Boss' : ''}</span></button>
-      ${coreMeter(foe, 'foe')}
+    <header class="bt-top">
+      <button class="foe-id" data-act="foeInfo"><span class="side-label foe">Enemy</span><span class="fi-text"><b>${FRAMES[foe.frame].name}</b><span>${FRAMES[foe.frame].role} · ${PILOTS[foe.pilot].style}${isBoss(run.floor) ? ' · Boss' : ''}</span></span></button>
+      <div class="foe-meta">
+        <div class="fm-item"><span class="res-label">Workshop</span>${slotsView(foe, true)}</div>
+        <div class="fm-item"><span class="res-label">Hand</span><span class="fm-hand"><span class="hand-backs">${'<i></i>'.repeat(Math.min(foe.hand.length, 3))}</span><b>${foe.hand.length}</b></span></div>
+        ${foe.guard ? `<div class="fm-item"><span class="res-label">Drones</span><span class="fm-hand"><i class="drone-pip"></i><b>${foe.guard}</b></span></div>` : ''}
+      </div>
     </header>
-    ${mechBox(foe, 'enemy')}
+    <section class="stage foe-stage">${partRail(foe, 'enemy')}${mechPad(foe, 'enemy')}</section>
     <div class="midline">
-      <span class="turn-pill">Turn ${turnNo}</span>
+      <span class="turn-chip ${G.active === 0 ? 'you' : 'foe'}">Turn ${turnNo}</span>
       ${tip
         ? `<div class="coach" role="note"><p><b>Tip</b> ${tip.text}</p><button class="coach-x" data-act="dismissTip" data-v="${tip.id}">Got it</button></div>`
         : `<button class="ticker ${G.active === 1 || ui.busy ? 'enemy' : ui.tickerSide === 'you' ? 'you' : ''}" data-act="log" aria-label="Battle log">${esc(ui.ticker || 'Your turn')}</button>`}
     </div>
-    ${mechBox(you, 'you')}
-    <section class="hud you-hud">
-      ${coreMeter(you, 'you')}
-      <div class="res"><span class="res-label">Energy <b>${you.energy}</b></span><span class="pips">${energy}</span></div>
-      <div class="res"><span class="res-label">Actions <b>${you.ap}</b></span><span class="pips">${actions}</span></div>
-      ${you.guard ? `<div class="res"><span class="res-label">Drones <b>${you.guard}</b></span><span class="pips">${Array.from({ length: you.guard }, () => '<i class="drone-pip"></i>').join('')}</span></div>` : ''}
-    </section>
-    <div class="actionbar">
-      <div class="ws"><span class="res-label">Workshop</span>${slotsView(you, false)}</div>
-      <button class="tool od" data-act="overdrive" ${odOk ? '' : 'disabled'}>${iconSVG('surge')}<span>Overdrive<span class="tool-sub"><br>+2 energy</span></span></button>
-      <button class="tool" data-act="doctrine">${iconSVG('clock')}<span>Crew<br>${DOCTRINES[you.doctrine].short}</span></button>
-      <button class="btn end-btn ${stuck ? 'nudge' : ''}" data-act="endTurn" ${myTurn ? '' : 'disabled'}>${G.active === 0 ? 'End turn' : 'Enemy turn'}</button>
+    <section class="stage you-stage">${mechPad(you, 'you')}${partRail(you, 'you')}</section>
+    <div class="dock">
+      <div class="dock-res">
+        <div class="res"><span class="res-label">Energy <b>${you.energy}</b></span><span class="pips">${energy}</span></div>
+        <div class="res"><span class="res-label">Actions <b>${you.ap}</b></span><span class="pips">${actions}</span></div>
+        ${you.guard ? `<div class="res"><span class="res-label">Drones <b>${you.guard}</b></span><span class="pips">${Array.from({ length: you.guard }, () => '<i class="drone-pip"></i>').join('')}</span></div>` : ''}
+        <div class="res ws"><span class="res-label">Workshop</span>${slotsView(you, false)}</div>
+      </div>
+      <div class="dock-ctl">
+        <button class="tool od" data-act="overdrive" ${odOk ? '' : 'disabled'}>${iconSVG('surge')}<span>Overdrive</span></button>
+        <button class="tool" data-act="doctrine">${iconSVG('clock')}<span>${DOCTRINES[you.doctrine].short}</span></button>
+        <button class="btn end-btn ${stuck ? 'nudge' : ''}" data-act="endTurn" ${myTurn ? '' : 'disabled'}>${G.active === 0 ? 'End turn' : 'Enemy turn'}</button>
+      </div>
     </div>
     <div class="hand-zone">${tray || handView()}</div>
   </div>`;
@@ -541,7 +556,10 @@ function animate(events) {
       const defBox = document.getElementById(e.p === 0 ? 'box-enemy' : 'box-you');
       if (!calm()) retrigger(atkBox, e.p === 0 ? 'lunge-up' : 'lunge-down');
       const part = defBox.querySelector(e.target === 'core' ? '.core-gem' : `.limb[data-limb="${e.target}"]`);
-      const chip = e.target === 'core' ? defBox.querySelector('.core-tag') : defBox.querySelector(`.tag[aria-label$="${LIMB_NAMES[e.target]}"]`);
+      const rail = document.querySelector(e.p === 0 ? '.foe-rail' : '.you-rail');
+      const row = rail?.querySelector(`[data-limb="${e.target}"]`);
+      retrigger(row, 'hit-flash');
+      const chip = part || row;
       setTimeout(() => {
         retrigger(part, 'flash');
         if (!calm()) retrigger(defBox, 'shake');
@@ -561,7 +579,7 @@ function animate(events) {
       if (!calm()) retrigger(app, 'screen-shake');
       floatAt(document.querySelector(e.p === 0 ? '#box-you .core-gem' : '#box-enemy .core-gem'), 'Overdrive!', 'info');
     } else if (e.type === 'delayed') {
-      floatAt(document.querySelector(e.p === 0 ? '.actionbar .slots' : '.enemy-slots'), '+1 turn', 'info');
+      floatAt(document.querySelector(e.p === 0 ? '.dock .slots' : '.enemy-slots'), '+1 turn', 'info');
     } else if (e.type === 'turn' && G.winner === null) {
       banner(e.p === 0 ? 'Your turn' : 'Enemy turn', e.p === 0 ? 'you' : 'foe', `Turn ${Math.ceil(e.turn / 2)}`);
     }
@@ -967,6 +985,21 @@ function slotSheet(i, side) {
     <div class="actions"><button class="btn white" data-act="closeSheet">Close</button></div>`;
 }
 
+function partSheet(side, k) {
+  const p = side === 'e' ? G.players[1] : you();
+  const l = p.limbs[k];
+  const whose = side === 'e' ? 'Enemy' : 'Your';
+  const uses = { head: 'Holds head gear. If it’s destroyed, weapons deal 1 less.', armL: 'Punches, or fires a mounted weapon.', armR: 'Punches, or fires a mounted weapon.', legs: 'Kicks, and gives your second action each turn.' }[k];
+  const m = l.alive && l.mount ? CARDS[l.mount.id] : null;
+  const pl = l.alive && l.plating ? CARDS[l.plating.id] : null;
+  return `<h3>${whose} ${LIMB_NAMES[k].toLowerCase()}</h3><div class="sub-line">${l.alive ? `${l.hp} / ${l.max} HP` : 'Destroyed'}</div>
+    <p>${uses}</p>
+    ${m ? `<p><b>Mounted:</b> ${m.name}. ${m.text.replace('Signature. ', '')}</p>` : l.alive ? '<p><b>Mounted:</b> nothing yet.</p>' : ''}
+    ${pl ? `<p><b>Plating:</b> ${pl.name}, Armor ${pl.armor}.</p>` : ''}
+    ${!l.alive ? '<p>A Rebuild Kit can bring it back. Anything mounted on it was lost.</p>' : ''}
+    <div class="actions"><button class="btn white" data-act="closeSheet">Close</button></div>`;
+}
+
 function logSheet() {
   let html = '';
   let open = false;
@@ -1079,6 +1112,7 @@ const handlers = {
     if (isLegal(G, a)) step(a);
   },
   slotInfo: (d) => openSheet(slotSheet(Number(d.i), d.side)),
+  partInfo: (d) => openSheet(partSheet(d.side, d.limb)),
   limb: (d) => selectLimb(d.limb),
   mode: (d) => { ui.sel.mode = d.m; ui.mode = 'target'; render(); },
   hit: (d) => {
@@ -1154,7 +1188,7 @@ app.addEventListener('click', (e) => {
   // Tapping a mech part directly works the same as tapping its tag.
   if (ui.screen === 'battle' && !ui.sheet) {
     const part = e.target.closest('.limb, .core-gem, .part-detail');
-    if (part && !el?.classList.contains('tag')) {
+    if (part && !el) {
       const limb = part.dataset.limb;
       if (part.closest('#box-you') && ui.mode === 'idle' && limb !== 'core') { selectLimb(limb); return; }
       if (part.closest('#box-enemy') && ui.mode === 'target') { handlers.hit({ t: limb }); return; }

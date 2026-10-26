@@ -10,7 +10,8 @@ Sticker-style mech TCG in plain HTML/JS (ES modules, no build step), hosted on G
 - **iPhone gotchas already handled** (keep them): safe-area insets, `100dvh`, fixed body (no rubber-band), `touch-action: manipulation`, no hover-only UI, inputs ≥16px, no long-press callouts, portrait lock hint, bundled fonts for offline.
 - When changing cached files, bump `CACHE` in `sw.js`.
 - Settings live in the save (`store.js` → `settings`); Settings → Reset all data wipes everything. Add new save fields to `DEFAULT` there.
-- Battle readability rules: every number on screen gets a label, the Core tag on each mech shows shield status, and coaching tips render in the midline (never over controls).
+- Battle readability rules: every number on screen gets a label; part HP and Core status live in the status rails (`partRail()`), never on the mech art; coaching tips render in the midline (never over controls).
+- Theme is dark (`--bg`, `--panel*` tokens in styles.css). Grid columns holding mechs must use `minmax(0, …)` or the mech pushes rails off-screen. Never animate `transform` on rows (shifts the layout); pulse with box-shadow.
 - Screenshot-check UI at 375×667 (SE) and 430×932 (Pro Max) before pushing.
 - Mech art (`src/ui/art.js`): each part is its own sticker via `sticker()`; upgrades come from `mountShapes()` and are positioned at `BODIES[frame].mounts`. Right arms are auto-mirrored from left arms. New Frames need a body plan with pivot and mount points.
 - Copy style: sentence case, plain verbs, no all-caps labels.

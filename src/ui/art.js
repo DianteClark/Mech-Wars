@@ -7,8 +7,9 @@
 import { CARDS, FRAMES } from '../engine/data.js';
 
 export const INK = '#121633';
-const LINE_W = 2.4;      // ink outline
-const CUT_W = 8;         // white die-cut border (stroke width; half shows outside)
+const LINE_W = 3;        // ink outline
+const CUT_W = 10;        // white die-cut border (stroke width; half shows outside)
+const RIM_W = CUT_W + 4.5; // thin dark rim around the die-cut, Block Dungeon style
 
 function shade(hex, amt) {
   const n = parseInt(hex.slice(1), 16);
@@ -201,14 +202,15 @@ function sticker(shapes, pal, { cls = '', attrsStr = '', ghost = false } = {}) {
   const outline = solid.map(([tag, a]) => `<${tag} ${attrs(a)}/>`).join('');
   let art = '';
   for (const [tag, a, tone] of shapes) {
-    if (tone === 'line') art += `<${tag} ${attrs(a)} fill="none" stroke="${INK}" stroke-width="1.6" stroke-linecap="round" opacity=".55"/>`;
+    if (tone === 'line') art += `<${tag} ${attrs(a)} fill="none" stroke="${INK}" stroke-width="2.2" stroke-linecap="round" opacity=".45"/>`;
     else if (tone === 'shine') art += `<${tag} ${attrs(a)} fill="#fff" fill-opacity=".45"/>`;
     else if (tone === 'shineline') art += `<${tag} ${attrs(a)} fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.4" stroke-linecap="round"/>`;
     else if (tone === 'ink') art += `<${tag} ${attrs(a)} fill="${INK}"/>`;
     else art += `<${tag} ${attrs(a)} fill="${fillFor(tone, pal)}" stroke="${INK}" stroke-width="${LINE_W}" stroke-linejoin="round"${tone === 'visor' ? ' class="visor"' : ''}/>`;
   }
   return `<g class="stk ${cls}" ${attrsStr}>
-    <g class="stk-shadow" transform="translate(0 3)" fill="#08123F" stroke="#08123F" stroke-width="${CUT_W}" stroke-linejoin="round" opacity=".32">${outline}</g>
+    <g class="stk-shadow" transform="translate(0 4)" fill="#05040F" stroke="#05040F" stroke-width="${RIM_W}" stroke-linejoin="round" opacity=".45">${outline}</g>
+    <g class="stk-rim" fill="${INK}" stroke="${INK}" stroke-width="${RIM_W}" stroke-linejoin="round">${outline}</g>
     <g class="stk-cut" fill="#fff" stroke="#fff" stroke-width="${CUT_W}" stroke-linejoin="round">${outline}</g>
     ${art}</g>`;
 }
@@ -429,10 +431,13 @@ const CARD_ICON = {
 
 export function iconSVG(name, cls = '') {
   const inner = ICONS[name] || ICONS.bolt;
+  // Die-cut layers: same shapes, no own colors, fat strokes (dark rim, then white).
+  const bare = inner.replace(/\s(fill|stroke|stroke-width|stroke-linecap|fill-opacity)="[^"]*"/g, '');
+  const cut = `<g fill="${INK}" stroke="${INK}" stroke-width="13" stroke-linejoin="round" stroke-linecap="round">${bare}</g><g fill="#fff" stroke="#fff" stroke-width="9" stroke-linejoin="round" stroke-linecap="round">${bare}</g>`;
   // Ink outline pass: re-draw with stroke underneath for the sticker look.
   const outlined = inner.replace(/<(rect|circle|path)([^>]*?)\/>/g, (m, tag, a) =>
     /stroke=/.test(a) ? m : `<${tag}${a} stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>`);
-  return `<svg class="icon ${cls}" viewBox="0 0 64 64" aria-hidden="true">${outlined}</svg>`;
+  return `<svg class="icon ${cls}" viewBox="-6 -6 76 76" aria-hidden="true">${cut}${outlined}</svg>`;
 }
 
 export function cardIcon(id) {

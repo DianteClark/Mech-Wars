@@ -134,7 +134,9 @@ Each Frame has a 20-card deck: 12 shared crew cards plus 8 of its own. Brakka, L
   - Every mech part (head, torso, each arm, legs) is its **own die-cut sticker** with its own white border and shadow.
   - Upgrades are stickers too: weapons, plating and boosters **slap on** over a part (fist upgrades cover the fist).
   - Hurt parts hang loose and get scuffed; destroyed parts **peel off** and leave a dashed ghost.
+  - Stickers have a white die-cut plus a thin dark rim (Block Dungeon reference). Card icons are stickers too.
   - Display type: Oxanium; body type: Rubik.
+- **Battle layout:** dark arena. Enemy top-right, you bottom-left, each on a lit platform. Part HP lives in a status rail beside each mech (Core first, then each limb), never on the art. Rails double as the attack and target controls.
 - **UI polish is a priority**, not an afterthought. Mobile-friendly from day one.
 
 ## Progression model: fighting-game style

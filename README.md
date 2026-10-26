@@ -6,9 +6,11 @@ Each player brings a single **Frame** (their mech), a **Pilot** who shapes how i
 
 ## Status
 
-🎮 **Prototype v0.3 is playable.** Four Frames, a fair-play AI with five skill tiers, Ranked and Practice Tower climbs, a local leaderboard, and scrap unlocks. Works offline once loaded, and installs to the iPhone Home Screen.
+🎮 **Prototype v0.4 is playable.** Four Frames, a fair-play AI with five skill tiers, Ranked and Practice Tower climbs, a local leaderboard, and scrap unlocks. Works offline once loaded, and installs to the iPhone Home Screen.
 
-**New in v0.3:** modular sticker mechs in a clean anime-mecha style. Every part is its own sticker, upgrades slap on, destroyed parts peel off. Sleeker type and finish, new app icon.
+**New in v0.4:** redesigned battle arena: dark theme, diagonal layout with lit platforms, part status rails beside each mech (no numbers on the art), and Block Dungeon-style stickers with a dark rim.
+
+**v0.3:** modular sticker mechs in a clean anime-mecha style. Every part is its own sticker, upgrades slap on, destroyed parts peel off. Sleeker type and finish, new app icon.
 
 **v0.2:** clearer battle HUD (labeled Core, energy, actions, Workshop; Core shield status on each mech; damage previews), cel-shaded mech art, versus intro, turn banners, first-time tips, battle log, fight summaries, a card browser in the Hangar, and a Settings screen (callsign, tips, enemy speed, motion, and **Reset all data**).
 
