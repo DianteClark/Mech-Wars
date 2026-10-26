@@ -1,6 +1,9 @@
 # Open Questions
 
-- [ ] **Offline mode structure:** roguelike runs, adventure/campaign progression, or both?
+- [x] ~~Offline mode structure~~ → Battle Tower (see DESIGN.md)
+- [ ] **Tower carryover:** does Core damage / built parts persist between floors?
+- [ ] **Tower structure:** boss floors, checkpoints, per-Frame leaderboards?
+- [ ] **Part pool:** shared across all Frames, or per-Frame arsenals?
 - [ ] **Energy ramp:** does energy ramp up over the first turns, or start at full Core output?
 - [ ] **Limb order:** exact rules for which limbs must fall before the Core is exposed.
 - [ ] **Slot list:** final set of mountable slots (Head, Torso, Arms, Legs, Back?).

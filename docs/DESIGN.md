@@ -89,7 +89,22 @@ The crew is mostly **flavor/explanation** for where parts come from — not unit
 - Costs **energy** and the **Pilot's passive bonus is lost that turn**.
 - Designed to be a big decision, not a routine move.
 
+## Progression model: fighting-game style
+
+- Players **unlock Frames** (mechs). Each Frame is a complete strategy, so every one must feel unique and be viable.
+- Everyone starts with the same **3–4 starter Frames**. Long-term goal is **30–50**, released in waves (launch target: starters + 6–8 unlockables).
+- Currency is earned from play and spent on new Frames.
+
 ## Game modes (planned)
 
-- **Offline first:** modes for learning, practicing, and building strategies.
-- **PvP:** the long-term goal; comes much later.
+### Battle Tower (offline, first)
+
+- Pick a Frame and climb a series of AI battles. How far can your mech go?
+- Each win earns currency, scaling with depth.
+- **Twists** (floor modifiers) change the rules for a stretch, e.g. no healing for the next 2–3 battles, limited Core energy output.
+- Gives players time to learn each Frame and develop strategy, without needing online lobbies.
+
+### PvP (later)
+
+- The long-term goal. Battle Tower builds the player base and skills first.
+- Rewards should not be win-only: every match earns some currency, wins earn more.
